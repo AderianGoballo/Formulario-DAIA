@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguimiento de Atletas Artículo 25</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para la paleta invernal y el carrusel */
+        :root {
+            --color-dark-blue: #1A202C; /* Tailwind's gray-900 or custom dark blue */
+            --color-medium-blue: #2B6CB0; /* Tailwind's blue-700 */
+            --color-light-blue: #90CDF4; /* Tailwind's blue-300 */
+            --color-white: #FFFFFF;
+            --color-gray-bg: #F7FAFC; /* Tailwind's gray-100 */
+            --color-answered: #68D391; /* Green for answered */
+            --color-pending: #F6AD55; /* Orange for pending */
+        }
+
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: var(--color-gray-bg);
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+
+        /* Carousel background styles */
+        .carousel-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 1s ease-in-out;
+            z-index: -1;
+        }
+
+        /* Sticky header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            transition: background-color 0.3s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header.scrolled {
+            background-color: var(--color-dark-blue); /* Darker background when scrolled */
+        }
+
+        /* Main content padding to avoid overlap with sticky header */
+        main {
+            padding-top: 80px; /* Adjust based on header height */
+        }
+
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--color-gray-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--color-medium-blue);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--color-dark-blue);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1001; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--color-white);
+            margin: auto;
+            padding: 2rem;
+            border-radius: 0.75rem; /* rounded-lg */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* shadow-md */
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: var(--color-dark-blue);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Styles for buttons based on questionnaire status */
+        .athlete-button.answered {
+            background-color: var(--color-answered);
+        }
+
+        .athlete-button.pending {
+            background-color: var(--color-pending);
+        }
+    </style>
+</head>
+<body class="text-gray-900">
+
+    <!-- Carousel Background -->
+    <div id="carousel-background" class="carousel-background"></div>
+
+    <!-- Header -->
+    <header id="header" class="header bg-blue-800 text-white p-4 flex items-center justify-between transition-all duration-300 ease-in-out">
+        <div class="flex items-center">
+            <img src="https://placehold.co/50x50/ADD8E6/000000?text=DAIA" alt="Logo DAIA" class="rounded-full mr-4 shadow-md">
+            <h1 class="text-2xl font-bold">Seguimiento de Atletas Artículo 25</h1>
+        </div>
+        <img src="https://placehold.co/50x50/ADD8E6/000000?text=UCV" alt="Logo UCV" class="rounded-full shadow-md">
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-6 relative z-10">
+        <!-- Disciplines Section -->
+        <section id="disciplines-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mb-8">
+            <h2 class="text-3xl font-semibold text-center mb-6 text-blue-800">Disciplinas Deportivas</h2>
+            <div id="disciplines-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- Discipline buttons will be loaded here by JS -->
+            </div>
+        </section>
+
+        <!-- Athletes Section (initially hidden) -->
+        <section id="athletes-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mb-8 hidden">
+            <button id="back-to-disciplines" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mb-6 shadow-md transition duration-300 ease-in-out">
+                &larr; Volver a Disciplinas
+            </button>
+            <h2 id="athletes-title" class="text-3xl font-semibold text-center mb-6 text-blue-800">Atletas de [Disciplina]</h2>
+            <div id="athletes-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <!-- Athlete buttons will be loaded here by JS -->
+            </div>
+        </section>
+
+        <!-- Questionnaire Section (initially hidden) -->
+        <section id="questionnaire-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mb-8 hidden">
+            <button id="back-to-athletes" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mb-6 shadow-md transition duration-300 ease-in-out">
+                &larr; Volver a Atletas
+            </button>
+            <h2 id="questionnaire-title" class="text-3xl font-semibold text-center mb-6 text-blue-800">Cuestionario de Seguimiento para [Atleta]</h2>
+            <form id="athlete-questionnaire" class="space-y-6">
+                <div>
+                    <label for="q1" class="block text-gray-700 text-lg font-medium mb-2">¿Cómo te sientes físicamente hoy?</label>
+                    <textarea id="q1" name="physical_feeling" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out" required></textarea>
+                </div>
+                <div>
+                    <label for="q2" class="block text-gray-700 text-lg font-medium mb-2">¿Has tenido alguna lesión o molestia reciente?</label>
+                    <textarea id="q2" name="recent_injury" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out" required></textarea>
+                </div>
+                <div>
+                    <label for="q3" class="block text-gray-700 text-lg font-medium mb-2">¿Cuál es tu estado de ánimo general?</label>
+                    <select id="q3" name="mood_state" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out" required>
+                        <option value="">Selecciona...</option>
+                        <option value="Excelente">Excelente</option>
+                        <option value="Bueno">Bueno</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Mal">Mal</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="q4" class="block text-gray-700 text-lg font-medium mb-2">¿Hay algo más que quieras compartir?</label>
+                    <textarea id="q4" name="additional_comments" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out"></textarea>
+                </div>
+                <button type="submit" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                    Enviar Cuestionario
+                </button>
+            </form>
+        </section>
+
+        <!-- Admin Button -->
+        <section class="flex justify-center mt-8">
+            <button id="admin-button" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Acceso Administrador
+            </button>
+        </section>
+
+        <!-- Admin Section (initially hidden) -->
+        <section id="admin-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mt-8 hidden">
+            <button id="back-to-main-from-admin" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mb-6 shadow-md transition duration-300 ease-in-out">
+                &larr; Volver a Página Principal
+            </button>
+            <h2 class="text-3xl font-semibold text-center mb-6 text-blue-800">Panel de Administración</h2>
+
+            <!-- Add/Edit Discipline -->
+            <div class="mb-8 p-6 border border-gray-200 rounded-lg">
+                <h3 class="text-2xl font-semibold mb-4 text-blue-700">Gestionar Disciplinas</h3>
+                <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                    <input type="text" id="discipline-name-input" placeholder="Nombre de la disciplina" class="flex-grow p-3 border border-gray-300 rounded-md">
+                    <button id="add-discipline-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">
+                        Agregar Disciplina
+                    </button>
+                </div>
+                <div id="admin-disciplines-list" class="space-y-3">
+                    <!-- Disciplines for admin will be listed here -->
+                </div>
+            </div>
+
+            <!-- Add/Edit Athlete -->
+            <div class="p-6 border border-gray-200 rounded-lg">
+                <h3 class="text-2xl font-semibold mb-4 text-blue-700">Gestionar Atletas</h3>
+                <div class="mb-4">
+                    <label for="admin-select-discipline" class="block text-gray-700 text-lg font-medium mb-2">Seleccionar Disciplina:</label>
+                    <select id="admin-select-discipline" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out">
+                        <option value="">Selecciona una disciplina</option>
+                    </select>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                    <input type="text" id="athlete-name-input" placeholder="Nombre del atleta" class="flex-grow p-3 border border-gray-300 rounded-md">
+                    <button id="add-athlete-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">
+                        Agregar Atleta
+                    </button>
+                </div>
+                <div id="admin-athletes-list" class="space-y-3">
+                    <!-- Athletes for selected discipline will be listed here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Password Modal -->
+    <div id="password-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" id="close-password-modal">&times;</span>
+            <h3 class="text-2xl font-semibold mb-4 text-blue-800 text-center">Acceso de Administrador</h3>
+            <p class="mb-4 text-center">Introduce la contraseña para acceder al panel de administración.</p>
+            <input type="password" id="admin-password-input" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-blue-500 focus:border-blue-500" placeholder="Contraseña">
+            <button id="submit-password-button" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Entrar
+            </button>
+            <p id="password-error" class="text-red-500 mt-2 text-center hidden">Contraseña incorrecta. Inténtalo de nuevo.</p>
+        </div>
+    </div>
+
+    <!-- Message Modal (for questionnaire submission confirmation/status) -->
+    <div id="message-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" id="close-message-modal">&times;</span>
+            <h3 id="message-modal-title" class="text-2xl font-semibold mb-4 text-blue-800 text-center">Mensaje</h3>
+            <p id="message-modal-content" class="mb-4 text-center"></p>
+            <button id="message-modal-ok" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript for dynamic behavior
+        document.addEventListener('DOMContentLoaded', () => {
+            const header = document.getElementById('header');
+            const carouselBackground = document.getElementById('carousel-background');
+            const disciplinesSection = document.getElementById('disciplines-section');
+            const athletesSection = document.getElementById('athletes-section');
+            const questionnaireSection = document.getElementById('questionnaire-section');
+            const adminSection = document.getElementById('admin-section');
+
+            const disciplinesContainer = document.getElementById('disciplines-container');
+            const athletesContainer = document.getElementById('athletes-container');
+            const athletesTitle = document.getElementById('athletes-title');
+            const questionnaireTitle = document.getElementById('questionnaire-title');
+            const athleteQuestionnaireForm = document.getElementById('athlete-questionnaire');
+
+            const backToDisciplinesBtn = document.getElementById('back-to-disciplines');
+            const backToAthletesBtn = document.getElementById('back-to-athletes');
+            const adminButton = document.getElementById('admin-button');
+            const backToMainFromAdminBtn = document.getElementById('back-to-main-from-admin');
+
+            const passwordModal = document.getElementById('password-modal');
+            const closePasswordModal = document.getElementById('close-password-modal');
+            const adminPasswordInput = document.getElementById('admin-password-input');
+            const submitPasswordButton = document.getElementById('submit-password-button');
+            const passwordError = document.getElementById('password-error');
+            const ADMIN_PASSWORD = '7#pL9@xQ$2!zMnB&'; // Admin password
+
+            const messageModal = document.getElementById('message-modal');
+            const closeMessageModal = document.getElementById('close-message-modal');
+            const messageModalTitle = document.getElementById('message-modal-title');
+            const messageModalContent = document.getElementById('message-modal-content');
+            const messageModalOk = document.getElementById('message-modal-ok');
+
+            let currentDiscipline = null;
+            let currentAthlete = null;
+
+            // --- Data Management ---
+            // Initial data structure
+            let appData = {
+                disciplines: [
+                    { name: 'Club de Ajedrez', athletes: [{ name: 'Juan Pérez', answered: false }, { name: 'Ana García', answered: false }] },
+                    { name: 'Club de Atletismo', athletes: [{ name: 'Carlos Ruiz', answered: false }, { name: 'María López', answered: false }] },
+                    { name: 'Club de Baloncesto', athletes: [{ name: 'Pedro Martínez', answered: false }, { name: 'Laura Fernández', answered: false }] },
+                    { name: 'Club de Beisbol', athletes: [{ name: 'Miguel Soto', answered: false }, { name: 'Sofía Díaz', answered: false }] },
+                    { name: 'Club de Boxeo', athletes: [{ name: 'Ricardo Morales', answered: false }, { name: 'Valeria Castro', answered: false }] },
+                    { name: 'Natación', athletes: [{ name: 'Daniel Vargas', answered: false }, { name: 'Camila Rojas', answered: false }] },
+                    { name: 'Polo Acuático', athletes: [{ name: 'Diego Herrera', answered: false }, { name: 'Isabella Gómez', answered: false }] },
+                    { name: 'Submarinismo', athletes: [{ name: 'Andrés Silva', answered: false }, { name: 'Gabriela Torres', answered: false }] },
+                    { name: 'Club de Esgrima', athletes: [{ name: 'Javier Navarro', answered: false }, { name: 'Paola Ortiz', answered: false }] },
+                    { name: 'Club de Excursionismo', athletes: [{ name: 'Fernando Pardo', answered: false }, { name: 'Elena Ramos', answered: false }] },
+                    { name: 'Club de Fútbol', athletes: [{ name: 'Luis Quintero', answered: false }, { name: 'Sara Salazar', answered: false }] },
+                    { name: 'Club de Fútbol Sala', athletes: [{ name: 'Jorge Blanco', answered: false }, { name: 'Martina Gil', answered: false }] },
+                    { name: 'Club de Gimnasia Rítmica', athletes: [{ name: 'Pablo Domínguez', answered: false }, { name: 'Lucía Vega', answered: false }] },
+                    { name: 'Club de Judo', athletes: [{ name: 'Roberto Castro', answered: false }, { name: 'Andrea Flores', answered: false }] },
+                    { name: 'Club de Karate-Do (Shito Ryu Sosei Kay)', athletes: [{ name: 'Sergio Guerrero', answered: false }, { name: 'Natalia Ibarra', answered: false }] },
+                    { name: 'Club de Karate Libre', athletes: [{ name: 'Manuel Jiménez', answered: false }, { name: 'Victoria León', answered: false }] },
+                    { name: 'Club de Kenpo', athletes: [{ name: 'Alejandro Mendoza', answered: false }, { name: 'Carolina Núñez', answered: false }] },
+                    { name: 'Club de Kickingball', athletes: [{ name: 'Francisco Ochoa', answered: false }, { name: 'Emilia Peña', answered: false }] },
+                    { name: 'Club de Kung-Fu Mantis', athletes: [{ name: 'Arturo Quiroz', answered: false }, { name: 'Sofía Rivas', answered: false }] },
+                    { name: 'Club de Kung-Fu Pajoj Pai', athletes: [{ name: 'Gustavo Sánchez', answered: false }, { name: 'Mariana Téllez', answered: false }] },
+                    { name: 'Club de Levantamiento de Pesas', athletes: [{ name: 'Héctor Urbina', answered: false }, { name: 'Daniela Valdés', answered: false }] },
+                    { name: 'Club de Lucha', athletes: [{ name: 'Iván Zamora', answered: false }, { name: 'Paula Acosta', answered: false }] },
+                    { name: 'Club de Rugby', athletes: [{ name: 'Óscar Bustamante', answered: false }, { name: 'Julia Cordero', answered: false }] },
+                    { name: 'Club de Salto Ornamental', athletes: [{ name: 'Benjamín Delgado', answered: false }, { name: 'Alexa Espinosa', answered: false }] },
+                    { name: 'Club de Softbol', athletes: [{ name: 'Cristian Fuentes', answered: false }, { name: 'Renata Gallegos', answered: false }] },
+                    { name: 'Club de Taekwondo', athletes: [{ name: 'Felipe Hernández', answered: false }, { name: 'Ximena Islas', answered: false }] },
+                    { name: 'Club de Tenis', athletes: [{ name: 'Gabriel Juárez', answered: false }, { name: 'Zoe Luna', answered: false }] },
+                    { name: 'Club de Tenis de Mesa', athletes: [{ name: 'José Montes', answered: false }, { name: 'Natalia Naranjo', answered: false }] },
+                    { name: 'Club de Voleibol', athletes: [{ name: 'Luis Oviedo', answered: false }, { name: 'Andrea Pineda', answered: false }] },
+                    { name: 'Club de Voleibol Arena', athletes: [{ name: 'Marco Quiroga', answered: false }, { name: 'Isabel Reyes', answered: false }] },
+                    { name: 'Club de Yoga', athletes: [{ name: 'Nicolás Solís', answered: false }, { name: 'Olivia Trejo', answered: false }] }
+                ]
+            };
+
+            // Load data from localStorage or use default
+            function loadData() {
+                const storedData = localStorage.getItem('athleteTrackerData');
+                if (storedData) {
+                    appData = JSON.parse(storedData);
+                }
+            }
+
+            // Save data to localStorage
+            function saveData() {
+                localStorage.setItem('athleteTrackerData', JSON.stringify(appData));
+            }
+
+            // --- UI Rendering Functions ---
+            function renderDisciplines() {
+                disciplinesContainer.innerHTML = '';
+                appData.disciplines.forEach(discipline => {
+                    const button = document.createElement('button');
+                    button.className = 'discipline-button bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 text-lg';
+                    button.textContent = discipline.name;
+                    button.dataset.disciplineName = discipline.name;
+                    button.addEventListener('click', () => showAthletes(discipline.name));
+                    disciplinesContainer.appendChild(button);
+                });
+            }
+
+            function showAthletes(disciplineName) {
+                currentDiscipline = appData.disciplines.find(d => d.name === disciplineName);
+                if (!currentDiscipline) return;
+
+                athletesTitle.textContent = `Atletas de ${disciplineName}`;
+                athletesContainer.innerHTML = '';
+
+                currentDiscipline.athletes.forEach(athlete => {
+                    const button = document.createElement('button');
+                    button.className = `athlete-button font-bold py-3 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 text-lg ${athlete.answered ? 'answered' : 'pending'} text-white`;
+                    button.textContent = athlete.name;
+                    button.dataset.athleteName = athlete.name;
+                    button.addEventListener('click', () => showQuestionnaire(athlete.name));
+                    athletesContainer.appendChild(button);
+                });
+
+                disciplinesSection.classList.add('hidden');
+                athletesSection.classList.remove('hidden');
+                questionnaireSection.classList.add('hidden');
+                adminSection.classList.add('hidden');
+            }
+
+            function showQuestionnaire(athleteName) {
+                currentAthlete = currentDiscipline.athletes.find(a => a.name === athleteName);
+                if (!currentAthlete) return;
+
+                questionnaireTitle.textContent = `Cuestionario de Seguimiento para ${athleteName}`;
+                athleteQuestionnaireForm.reset(); // Clear previous form data
+
+                disciplinesSection.classList.add('hidden');
+                athletesSection.classList.add('hidden');
+                questionnaireSection.classList.remove('hidden');
+                adminSection.classList.add('hidden');
+            }
+
+            function showMainPage() {
+                disciplinesSection.classList.remove('hidden');
+                athletesSection.classList.add('hidden');
+                questionnaireSection.classList.add('hidden');
+                adminSection.classList.add('hidden');
+                renderDisciplines(); // Re-render disciplines to reflect any admin changes
+            }
+
+            function showAdminPanel() {
+                disciplinesSection.classList.add('hidden');
+                athletesSection.classList.add('hidden');
+                questionnaireSection.classList.add('hidden');
+                adminSection.classList.remove('hidden');
+                renderAdminDisciplines();
+                populateAdminDisciplineSelect();
+                renderAdminAthletes(); // Render athletes for the initially selected discipline
+            }
+
+            function showMessageModal(title, content) {
+                messageModalTitle.textContent = title;
+                messageModalContent.textContent = content;
+                messageModal.classList.remove('hidden');
+            }
+
+            function hideMessageModal() {
+                messageModal.classList.add('hidden');
+            }
+
+            // --- Event Listeners ---
+            backToDisciplinesBtn.addEventListener('click', showMainPage);
+            backToAthletesBtn.addEventListener('click', () => showAthletes(currentDiscipline.name));
+            adminButton.addEventListener('click', () => passwordModal.classList.remove('hidden'));
+            closePasswordModal.addEventListener('click', () => {
+                passwordModal.classList.add('hidden');
+                passwordError.classList.add('hidden');
+                adminPasswordInput.value = '';
+            });
+            backToMainFromAdminBtn.addEventListener('click', showMainPage);
+
+            submitPasswordButton.addEventListener('click', () => {
+                if (adminPasswordInput.value === ADMIN_PASSWORD) {
+                    passwordModal.classList.add('hidden');
+                    passwordError.classList.add('hidden');
+                    adminPasswordInput.value = '';
+                    showAdminPanel();
+                } else {
+                    passwordError.classList.remove('hidden');
+                }
+            });
+
+            closeMessageModal.addEventListener('click', hideMessageModal);
+            messageModalOk.addEventListener('click', hideMessageModal);
+
+            athleteQuestionnaireForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const formData = new FormData(athleteQuestionnaireForm);
+                const questionnaireData = {};
+                for (let [key, value] of formData.entries()) {
+                    questionnaireData[key] = value;
+                }
+
+                // Simulate sending data to Google Sheet
+                console.log(`Sending questionnaire for ${currentAthlete.name} (${currentDiscipline.name}):`, questionnaireData);
+                showMessageModal('Cuestionario Enviado', `¡Gracias! El cuestionario de ${currentAthlete.name} ha sido registrado. (Simulado)`);
+
+                // Update athlete status
+                currentAthlete.answered = true;
+                saveData();
+
+                // Go back to athletes list
+                setTimeout(() => {
+                    hideMessageModal();
+                    showAthletes(currentDiscipline.name);
+                }, 1500); // Give user time to read message
+            });
+
+            // --- Header Sticky Logic ---
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 50) { // Adjust scroll threshold as needed
+                    header.classList.add('scrolled');
+                } else {
+                    header.classList.remove('scrolled');
+                }
+            });
+
+            // --- Carousel Background Logic ---
+            const carouselImages = [
+                'https://placehold.co/1920x1080/ADD8E6/000000?text=Cancha+1',
+                'https://placehold.co/1920x1080/B0C4DE/000000?text=Cancha+2',
+                'https://placehold.co/1920x1080/C6E2FF/000000?text=Cancha+3'
+            ];
+            let currentImageIndex = 0;
+
+            function changeCarouselImage() {
+                carouselBackground.style.backgroundImage = `url('${carouselImages[currentImageIndex]}')`;
+                currentImageIndex = (currentImageIndex + 1) % carouselImages.length;
+            }
+
+            // Change image every 5 seconds
+            setInterval(changeCarouselImage, 5000);
+            changeCarouselImage(); // Set initial image
+
+            // --- Admin Panel Logic ---
+            const disciplineNameInput = document.getElementById('discipline-name-input');
+            const addDisciplineButton = document.getElementById('add-discipline-button');
+            const adminDisciplinesList = document.getElementById('admin-disciplines-list');
+            const adminSelectDiscipline = document.getElementById('admin-select-discipline');
+            const athleteNameInput = document.getElementById('athlete-name-input');
+            const addAthleteButton = document.getElementById('add-athlete-button');
+            const adminAthletesList = document.getElementById('admin-athletes-list');
+
+            function renderAdminDisciplines() {
+                adminDisciplinesList.innerHTML = '';
+                appData.disciplines.forEach((discipline, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded-md shadow-sm';
+                    div.innerHTML = `
+                        <span class="text-gray-800">${discipline.name}</span>
+                        <div>
+                            <button data-index="${index}" class="edit-discipline-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
+                            <button data-index="${index}" class="delete-discipline-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
+                        </div>
+                    `;
+                    adminDisciplinesList.appendChild(div);
+                });
+                addAdminDisciplineListeners();
+            }
+
+            function addAdminDisciplineListeners() {
+                document.querySelectorAll('.edit-discipline-btn').forEach(button => {
+                    button.onclick = (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        const newName = prompt('Introduce el nuevo nombre para la disciplina:', appData.disciplines[index].name);
+                        if (newName && newName.trim() !== '') {
+                            appData.disciplines[index].name = newName.trim();
+                            saveData();
+                            renderAdminDisciplines();
+                            populateAdminDisciplineSelect();
+                            renderDisciplines(); // Update main page
+                        }
+                    };
+                });
+                document.querySelectorAll('.delete-discipline-btn').forEach(button => {
+                    button.onclick = (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        if (confirm(`¿Estás seguro de que quieres eliminar la disciplina "${appData.disciplines[index].name}"?`)) {
+                            appData.disciplines.splice(index, 1);
+                            saveData();
+                            renderAdminDisciplines();
+                            populateAdminDisciplineSelect();
+                            renderDisciplines(); // Update main page
+                            renderAdminAthletes(); // Clear athlete list if discipline deleted
+                        }
+                    };
+                });
+            }
+
+            addDisciplineButton.addEventListener('click', () => {
+                const name = disciplineNameInput.value.trim();
+                if (name) {
+                    if (!appData.disciplines.some(d => d.name === name)) {
+                        appData.disciplines.push({ name: name, athletes: [] });
+                        saveData();
+                        disciplineNameInput.value = '';
+                        renderAdminDisciplines();
+                        populateAdminDisciplineSelect();
+                        renderDisciplines(); // Update main page
+                    } else {
+                        showMessageModal('Error', 'La disciplina ya existe.');
+                    }
+                } else {
+                    showMessageModal('Error', 'El nombre de la disciplina no puede estar vacío.');
+                }
+            });
+
+            function populateAdminDisciplineSelect() {
+                adminSelectDiscipline.innerHTML = '<option value="">Selecciona una disciplina</option>';
+                appData.disciplines.forEach(discipline => {
+                    const option = document.createElement('option');
+                    option.value = discipline.name;
+                    option.textContent = discipline.name;
+                    adminSelectDiscipline.appendChild(option);
+                });
+                // Set the current discipline in the select if it's still valid
+                if (currentDiscipline && appData.disciplines.some(d => d.name === currentDiscipline.name)) {
+                    adminSelectDiscipline.value = currentDiscipline.name;
+                } else if (appData.disciplines.length > 0) {
+                    adminSelectDiscipline.value = appData.disciplines[0].name; // Select first by default
+                    currentDiscipline = appData.disciplines[0];
+                } else {
+                    currentDiscipline = null;
+                }
+                renderAdminAthletes(); // Re-render athletes when discipline selection changes
+            }
+
+            adminSelectDiscipline.addEventListener('change', (e) => {
+                const selectedDisciplineName = e.target.value;
+                currentDiscipline = appData.disciplines.find(d => d.name === selectedDisciplineName);
+                renderAdminAthletes();
+            });
+
+            function renderAdminAthletes() {
+                adminAthletesList.innerHTML = '';
+                if (currentDiscipline && currentDiscipline.athletes) {
+                    currentDiscipline.athletes.forEach((athlete, index) => {
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded-md shadow-sm';
+                        div.innerHTML = `
+                            <span class="text-gray-800">${athlete.name}</span>
+                            <div>
+                                <button data-index="${index}" class="edit-athlete-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
+                                <button data-index="${index}" class="delete-athlete-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
+                                <button data-index="${index}" class="reset-athlete-status-btn bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-1 px-3 rounded-full">Resetear Estado</button>
+                            </div>
+                        `;
+                        adminAthletesList.appendChild(div);
+                    });
+                }
+                addAdminAthleteListeners();
+            }
+
+            function addAdminAthleteListeners() {
+                document.querySelectorAll('.edit-athlete-btn').forEach(button => {
+                    button.onclick = (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        const newName = prompt('Introduce el nuevo nombre para el atleta:', currentDiscipline.athletes[index].name);
+                        if (newName && newName.trim() !== '') {
+                            currentDiscipline.athletes[index].name = newName.trim();
+                            saveData();
+                            renderAdminAthletes();
+                            if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
+                                showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                            }
+                        }
+                    };
+                });
+                document.querySelectorAll('.delete-athlete-btn').forEach(button => {
+                    button.onclick = (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        if (confirm(`¿Estás seguro de que quieres eliminar al atleta "${currentDiscipline.athletes[index].name}"?`)) {
+                            currentDiscipline.athletes.splice(index, 1);
+                            saveData();
+                            renderAdminAthletes();
+                            if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
+                                showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                            }
+                        }
+                    };
+                });
+                document.querySelectorAll('.reset-athlete-status-btn').forEach(button => {
+                    button.onclick = (e) => {
+                        const index = parseInt(e.target.dataset.index);
+                        if (confirm(`¿Estás seguro de que quieres resetear el estado del cuestionario para "${currentDiscipline.athletes[index].name}"?`)) {
+                            currentDiscipline.athletes[index].answered = false;
+                            saveData();
+                            renderAdminAthletes();
+                            if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
+                                showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                            }
+                        }
+                    };
+                });
+            }
+
+            addAthleteButton.addEventListener('click', () => {
+                const name = athleteNameInput.value.trim();
+                if (!currentDiscipline) {
+                    showMessageModal('Error', 'Por favor, selecciona una disciplina primero.');
+                    return;
+                }
+                if (name) {
+                    if (!currentDiscipline.athletes.some(a => a.name === name)) {
+                        currentDiscipline.athletes.push({ name: name, answered: false });
+                        saveData();
+                        athleteNameInput.value = '';
+                        renderAdminAthletes();
+                        if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
+                            showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                        }
+                    } else {
+                        showMessageModal('Error', 'El atleta ya existe en esta disciplina.');
+                    }
+                } else {
+                    showMessageModal('Error', 'El nombre del atleta no puede estar vacío.');
+                }
+            });
+
+            // --- Initial Load ---
+            loadData();
+            renderDisciplines();
+        });
+    </script>
+</body>
+</html>
