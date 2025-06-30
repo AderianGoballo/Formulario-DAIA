@@ -1,111 +1,72 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Seguimiento de Atletas - Disciplinas</title>
-<!-- Tailwind CSS + Inter font (Tailwind ya incluye Inter como fuente por defecto) -->
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  /* Fondo dinámico con opacidad 1 (total visible) y transición suave */
-  #carousel {
-    position: fixed;
-    inset: 0;
-    z-index: -10;
-    background-size: cover;
-    background-position: center;
-    opacity: 1;
-    transition: background-image 1s ease-in-out;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Disciplinas Deportivas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-white text-gray-800 overflow-auto font-sans">
+<body>
 
-<header class="sticky top-0 bg-white border-b border-blue-200 shadow-md flex items-center justify-between px-6 py-4 z-50">
-  <img src="http://www.ucv.ve/typo3temp/pics/b74500906e.gif" alt="DAIA Logo" class="h-12 w-12 rounded-full object-contain" />
-  <h1 class="text-3xl font-bold text-blue-800">Seguimiento de Atletas Artículo 25</h1>
-  <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Logo_Universidad_Central_de_Venezuela.svg/960px-Logo_Universidad_Central_de_Venezuela.svg.png" alt="UCV Logo" class="h-12 w-12 rounded-full object-contain" />
-</header>
+  <!-- Cargar layout -->
+  <div id="layout-wrapper"></div>
 
-<div id="carousel"></div>
+  <main class="flex justify-center mt-12">
+    <div class="contenedor-blanco" id="contenido-principal">
+      <h1 class="text-4xl font-extrabold mx-auto mb-4">Disciplinas Deportivas</h1>
+      <div id="contenedorDisciplinas"></div>
+      <button id="btnAdmin">Modo Administrador</button>
+    </div>
+  </main>
 
-<main class="flex flex-col items-center justify-center px-4 py-8 max-w-4xl mx-auto min-h-[calc(100vh-88px)]">
-  <section class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <!-- Botones disciplinas generados por JS aquí -->
-  </section>
+  <script>
+    async function loadLayout() {
+      const res = await fetch('layout.html');
+      if (!res.ok) throw new Error('No se pudo cargar layout.html');
+      const html = await res.text();
+      document.getElementById('layout-wrapper').innerHTML = html;
 
-  <div class="mt-10 flex gap-4">
-    <a href="admin.html" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Modo Administrador</a>
-    <a href="#" id="btnHojaCalculo" class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg shadow-lg transition duration-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Ver Hoja de Cálculo</a>
-  </div>
-
-  <div id="mensajeEstado" class="mt-8 w-full max-w-md rounded-lg p-4 hidden"></div>
-</main>
-
-<script>
-  // Imágenes para carrusel de fondo
-  const images = [
-    'https://i0.wp.com/ultimasnoticias.com.ve/wp-content/uploads/2024/06/IMG_4144-scaled.jpg?resize=696%2C464&ssl=1',
-    'https://www.astsports.com/wp-content/uploads/2018/05/lp17_1-2.jpg',
-    'https://alzirarugby.club/wp-content/uploads/2020/06/Alzira-25-UCV-71-2019-04-06-e1592818789196.jpg'
-  ];
-  const carousel = document.getElementById('carousel');
-  let currentIndex = 0;
-  function cambiarFondo() {
-    carousel.style.backgroundImage = `url(${images[currentIndex]})`;
-    currentIndex = (currentIndex + 1) % images.length;
-  }
-  cambiarFondo();
-  setInterval(cambiarFondo, 3000);
-
-  // Contenedor para botones
-  const contenedor = document.querySelector('main section');
-
-  // Mensaje estado
-  const mensajeEstado = document.getElementById('mensajeEstado');
-
-  // Función para mostrar mensajes
-  function mostrarMensaje(texto, tipo = 'exito') {
-    mensajeEstado.textContent = texto;
-    mensajeEstado.className = 'mt-8 w-full max-w-md rounded-lg p-4';
-    if(tipo === 'exito') {
-      mensajeEstado.classList.add('bg-green-100', 'text-green-700', 'border', 'border-green-400');
-    } else if(tipo === 'error') {
-      mensajeEstado.classList.add('bg-red-100', 'text-red-700', 'border', 'border-red-400');
+      // Evento logo DAIA
+      document.getElementById('logoDAIA').addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
     }
-    mensajeEstado.classList.remove('hidden');
-    setTimeout(() => {
-      mensajeEstado.classList.add('hidden');
-    }, 5000);
-  }
 
-  // Enlace hoja cálculo (ejemplo, cambia la URL si quieres)
-  document.getElementById('btnHojaCalculo').href = 'https://docs.google.com/spreadsheets/d/1K8qGO46yhwpM_qTupQfGW9TNnazmU3Y4N8Wt-QfWB5c/edit';
-
-  // Cargar disciplinas de la API
-  async function cargarDisciplinas() {
-    try {
-      const res = await fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec');
-      const data = await res.json();
-      if(data.status === 'ok') {
-        contenedor.innerHTML = '';
-        data.disciplinas.forEach(d => {
-          const btn = document.createElement('a');
-          btn.href = `atletas.html?disciplinaId=${d.id}&disciplinaNombre=${encodeURIComponent(d.nombre)}`;
-          btn.textContent = d.nombre;
-          btn.className = 'bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl shadow-lg px-6 py-4 text-center transition duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2';
-          contenedor.appendChild(btn);
-        });
-        mostrarMensaje('Disciplinas cargadas correctamente.', 'exito');
-      } else {
-        mostrarMensaje('Error cargando disciplinas: ' + (data.message || 'Desconocido'), 'error');
+    async function cargarDisciplinas() {
+      try {
+        const res = await fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec');
+        const data = await res.json();
+        if (data.status === 'ok' && Array.isArray(data.disciplinas)) {
+          const contenedor = document.getElementById('contenedorDisciplinas');
+          contenedor.innerHTML = '';
+          data.disciplinas.forEach(d => {
+            const btn = document.createElement('button');
+            btn.textContent = d.nombre;
+            btn.className = 'btn-disciplina';
+            btn.addEventListener('click', () => {
+              window.location.href = `atletas.html?disciplinaId=${encodeURIComponent(d.id)}&disciplinaNombre=${encodeURIComponent(d.nombre)}`;
+            });
+            contenedor.appendChild(btn);
+          });
+        } else {
+          console.error('Disciplinas no válidas recibidas');
+        }
+      } catch (error) {
+        console.error('Error cargando disciplinas:', error);
       }
-    } catch(e) {
-      mostrarMensaje('Error al conectar con la API.', 'error');
     }
-  }
 
-  cargarDisciplinas();
-</script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('btnAdmin').addEventListener('click', () => {
+        window.location.href = 'admin.html';
+      });
+    });
+
+    (async () => {
+      await loadLayout();
+      await cargarDisciplinas();
+    })();
+  </script>
+
 </body>
 </html>
