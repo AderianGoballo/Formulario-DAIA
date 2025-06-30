@@ -152,5 +152,27 @@
       window.location.href = 'index.html';
     });
   </script>
+
+  <script>
+  function inicializarLayout() {
+    const imagenes = document.querySelectorAll('.carrusel');
+    let actual = 0;
+    if (imagenes.length > 1) {
+      setInterval(() => {
+        imagenes[actual].classList.remove('active');
+        actual = (actual + 1) % imagenes.length;
+        imagenes[actual].classList.add('active');
+      }, 5000);
+    }
+
+    const logo = document.getElementById('logoDAIA');
+    if (logo) {
+      logo.addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
+    }
+  }
+</script>
+
 </body>
 </html>

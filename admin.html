@@ -243,6 +243,33 @@
     document.getElementById('btnVolver').addEventListener('click', () => {
       window.history.back();
     });
+
+    async function loadLayout() {
+    const res = await fetch('layout.html');
+    const html = await res.text();
+    document.getElementById('layout-wrapper').innerHTML = html;
+
+    // Inicializar el carrusel DESPUÉS de que las imágenes estén cargadas
+    const imagenes = document.querySelectorAll('.carrusel');
+    let actual = 0;
+    if (imagenes.length > 1) {
+      setInterval(() => {
+        imagenes[actual].classList.remove('active');
+        actual = (actual + 1) % imagenes.length;
+        imagenes[actual].classList.add('active');
+      }, 5000);
+    }
+
+    // Logo clickeable
+    const logo = document.getElementById('logoDAIA');
+    if (logo) {
+      logo.addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
+    }
+  }
+
+  loadLayout();
   </script>
 </body>
 </html>
