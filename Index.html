@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Seguimiento de Atletas Artículo 25</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    body, html {
+      height: 100%;
+    }
+    header {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(5px);
+    }
+    header img {
+      height: 50px;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      text-align: center;
+      flex: 1;
+    }
+    #background-carousel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      overflow: hidden;
+    }
+    #background-carousel img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+    #background-carousel img.active {
+      opacity: 1;
+    }
+    main {
+      padding: 2rem;
+      background: rgba(255,255,255,0.8);
+      min-height: 100vh;
+    }
+    h2 {
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    button.disciplina-btn, button.atleta-btn {
+      background: #2c5282;
+      color: white;
+      font-weight: 600;
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      width: 100%;
+      text-align: center;
+      font-size: 1rem;
+    }
+    button.disciplina-btn:hover, button.atleta-btn:hover {
+      background: #1a365d;
+    }
+    #admin-section {
+      margin-top: 4rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="background-carousel" aria-hidden="true">
+    <img src="https://i0.wp.com/ultimasnoticias.com.ve/wp-content/uploads/2024/06/IMG_4144-scaled.jpg?resize=696%2C464&ssl=1" class="active" />
+    <img src="https://www.astsports.com/wp-content/uploads/2018/05/lp17_1-2.jpg" />
+    <img src="https://alzirarugby.club/wp-content/uploads/2020/06/Alzira-25-UCV-71-2019-04-06-e1592818789196.jpg" />
+  </div>
+  <header>
+    <img src="http://www.ucv.ve/typo3temp/pics/b74500906e.gif" alt="Logo DAIA" />
+    <h1>Seguimiento de Atletas Artículo 25</h1>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Logo_Universidad_Central_de_Venezuela.svg/960px-Logo_Universidad_Central_de_Venezuela.svg.png" alt="Logo UCV" />
+  </header>
+  <main>
+    <h2>Disciplinas deportivas</h2>
+    <div id="disciplinas-container" class="grid"></div>
+    <div id="admin-section">
+      <button onclick="window.location.href='admin.html'">🔒 Administrador</button>
+    </div>
+  </main>
+  <script>
+    const imgs = document.querySelectorAll('#background-carousel img');
+    let current = 0;
+    setInterval(() => {
+      imgs[current].classList.remove('active');
+      current = (current + 1) % imgs.length;
+      imgs[current].classList.add('active');
+    }, 2000);
+
+    const endpoint = 'https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec';
+
+    fetch(endpoint)
+      .then(r => r.json())
+      .then(data => {
+        const contenedor = document.getElementById('disciplinas-container');
+        data.disciplinas.forEach(d => {
+          const btn = document.createElement('button');
+          btn.className = 'disciplina-btn';
+          btn.textContent = d.nombre;
+          btn.onclick = () => {
+            window.location.href = `atletas.html?disciplina=${encodeURIComponent(d.nombre)}&id=${d.id}`;
+          };
+          contenedor.appendChild(btn);
+        });
+      })
+      .catch(err => {
+        console.error("Error al cargar disciplinas", err);
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atletas por Disciplina</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #eef2f5;
+      padding: 2rem;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    button {
+      background: #2c5282;
+      color: white;
+      border: none;
+      padding: 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #1a365d;
+    }
+    .volver {
+      display: block;
+      margin: 2rem auto;
+      text-align: center;
+      background: #718096;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      text-decoration: none;
+      width: fit-content;
+    }
+  </style>
+</head>
+<body>
+  <h2 id="titulo-disciplina">Atletas</h2>
+  <div id="contenedor-atletas" class="grid"></div>
+  <a href="index.html" class="volver">⬅ Volver</a>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const idDisciplina = urlParams.get('id');
+    const nombreDisciplina = urlParams.get('disciplina');
+    const contenedor = document.getElementById('contenedor-atletas');
+    document.getElementById('titulo-disciplina').textContent = `Atletas de ${nombreDisciplina}`;
+
+    fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec')
+      .then(res => res.json())
+      .then(data => {
+        const disciplina = data.disciplinas.find(d => d.id == idDisciplina);
+        if (!disciplina) return;
+        disciplina.atletas.forEach(nombre => {
+          const btn = document.createElement('button');
+          btn.textContent = nombre;
+          btn.onclick = () => {
+            window.location.href = `cuestionario.html?nombre=${encodeURIComponent(nombre)}&disciplina=${encodeURIComponent(nombreDisciplina)}`;
+          };
+          contenedor.appendChild(btn);
+        });
+      });
+  </script>
+</body>
+</html>

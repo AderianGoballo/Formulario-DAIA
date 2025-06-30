@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Administrador - Seguimiento de Atletas</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      padding: 2rem;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    input, select, button {
+      padding: 0.5rem;
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+      display: block;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #2c5282;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1a365d;
+    }
+    .lista {
+      margin-top: 2rem;
+    }
+    .item {
+      background: white;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      border-radius: 5px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h2>Panel de Administración</h2>
+  <div id="auth">
+    <input type="password" id="clave" placeholder="Clave de administrador">
+    <button onclick="validarClave()">Entrar</button>
+  </div>
+
+  <div id="panel" style="display:none">
+    <h3>Agregar Disciplina</h3>
+    <input type="text" id="nueva-disciplina" placeholder="Nombre de la disciplina">
+    <button onclick="agregarDisciplina()">Agregar</button>
+
+    <h3>Agregar Atleta</h3>
+    <input type="text" id="nuevo-atleta" placeholder="Nombre del atleta">
+    <select id="disciplina-select"></select>
+    <button onclick="agregarAtleta()">Agregar</button>
+
+    <div class="lista">
+      <h3>Disciplinas actuales</h3>
+      <div id="lista-disciplinas"></div>
+    </div>
+  </div>
+
+  <script>
+    const URL = 'https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec';
+    let clave = '';
+
+    function validarClave() {
+      const input = document.getElementById('clave').value;
+      if (input === '7#pL9@xQ$2!zMnB&') {
+        clave = input;
+        document.getElementById('auth').style.display = 'none';
+        document.getElementById('panel').style.display = 'block';
+        cargarDisciplinas();
+      } else {
+        alert('Clave incorrecta');
+      }
+    }
+
+    function cargarDisciplinas() {
+      fetch(URL)
+        .then(res => res.json())
+        .then(data => {
+          const lista = document.getElementById('lista-disciplinas');
+          const select = document.getElementById('disciplina-select');
+          lista.innerHTML = '';
+          select.innerHTML = '';
+          data.disciplinas.forEach(d => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.textContent = d.nombre;
+            lista.appendChild(div);
+
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.nombre;
+            select.appendChild(opt);
+          });
+        });
+    }
+
+    function agregarDisciplina() {
+      const nombre = document.getElementById('nueva-disciplina').value;
+      fetch(URL, {
+        method: 'POST',
+        body: JSON.stringify({ tipo: 'nueva-disciplina', nombre, adminKey: clave }),
+      })
+      .then(() => cargarDisciplinas());
+    }
+
+    function agregarAtleta() {
+      const nombre = document.getElementById('nuevo-atleta').value;
+      const disciplinaId = document.getElementById('disciplina-select').value;
+      fetch(URL, {
+        method: 'POST',
+        body: JSON.stringify({ tipo: 'nuevo-atleta', nombre, disciplinaId, adminKey: clave })
+      })
+      .then(() => cargarDisciplinas());
+    }
+  </script>
+</body>
+</html>
