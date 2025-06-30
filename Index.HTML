@@ -6,6 +6,33 @@
     <title>Seguimiento de Atletas Artículo 25</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Expose Firebase functions globally for use in the main script
+        window.firebase = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            signInWithCustomToken,
+            onAuthStateChanged,
+            getFirestore,
+            doc,
+            getDoc,
+            addDoc,
+            setDoc,
+            updateDoc,
+            deleteDoc,
+            onSnapshot,
+            collection,
+            query,
+            where,
+            getDocs
+        };
+    </script>
     <style>
         /* Estilos personalizados para la paleta invernal y el carrusel */
         :root {
@@ -273,9 +300,42 @@
         </div>
     </div>
 
-    <script>
-        // JavaScript for dynamic behavior
-        document.addEventListener('DOMContentLoaded', () => {
+    <!-- Prompt Modal (for admin edits) -->
+    <div id="prompt-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" id="close-prompt-modal">&times;</span>
+            <h3 id="prompt-modal-title" class="text-2xl font-semibold mb-4 text-blue-800 text-center"></h3>
+            <input type="text" id="prompt-modal-input" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-blue-500 focus:border-blue-500" placeholder="">
+            <div class="flex justify-end gap-4">
+                <button id="prompt-modal-cancel" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Cancelar</button>
+                <button id="prompt-modal-ok" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal (for admin deletions/resets) -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-button" id="close-confirm-modal">&times;</span>
+            <h3 id="confirm-modal-title" class="text-2xl font-semibold mb-4 text-blue-800 text-center">Confirmar Acción</h3>
+            <p id="confirm-modal-content" class="mb-4 text-center"></p>
+            <div class="flex justify-end gap-4">
+                <button id="confirm-modal-cancel" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Cancelar</button>
+                <button id="confirm-modal-ok" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center p-4 text-gray-600 text-sm bg-white bg-opacity-90 mt-8 rounded-lg shadow-xl">
+        <p>ID de Usuario: <span id="user-id">Cargando...</span></p>
+        <p>Desarrollado para la Universidad Central de Venezuela</p>
+    </footer>
+
+    <script type="module">
+        // Import Firebase functions from the global window object
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } = window.firebase;
+
+        document.addEventListener('DOMContentLoaded', async () => {
             const header = document.getElementById('header');
             const carouselBackground = document.getElementById('carousel-background');
             const disciplinesSection = document.getElementById('disciplines-section');
@@ -307,58 +367,222 @@
             const messageModalContent = document.getElementById('message-modal-content');
             const messageModalOk = document.getElementById('message-modal-ok');
 
+            // Custom Prompt Modal elements
+            const promptModal = document.getElementById('prompt-modal');
+            const closePromptModal = document.getElementById('close-prompt-modal');
+            const promptModalTitle = document.getElementById('prompt-modal-title');
+            const promptModalInput = document.getElementById('prompt-modal-input');
+            const promptModalCancel = document.getElementById('prompt-modal-cancel');
+            const promptModalOk = document.getElementById('prompt-modal-ok');
+
+            // Custom Confirm Modal elements
+            const confirmModal = document.getElementById('confirm-modal');
+            const closeConfirmModal = document.getElementById('close-confirm-modal');
+            const confirmModalTitle = document.getElementById('confirm-modal-title');
+            const confirmModalContent = document.getElementById('confirm-modal-content');
+            const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+            const confirmModalOk = document.getElementById('confirm-modal-ok');
+
+            const userIdDisplay = document.getElementById('user-id');
+
             let currentDiscipline = null;
             let currentAthlete = null;
+            let appData = { disciplines: [] }; // Initial data structure, will be populated from Firestore
 
-            // --- Data Management ---
-            // Initial data structure
-            let appData = {
-                disciplines: [
-                    { name: 'Club de Ajedrez', athletes: [{ name: 'Juan Pérez', answered: false }, { name: 'Ana García', answered: false }] },
-                    { name: 'Club de Atletismo', athletes: [{ name: 'Carlos Ruiz', answered: false }, { name: 'María López', answered: false }] },
-                    { name: 'Club de Baloncesto', athletes: [{ name: 'Pedro Martínez', answered: false }, { name: 'Laura Fernández', answered: false }] },
-                    { name: 'Club de Beisbol', athletes: [{ name: 'Miguel Soto', answered: false }, { name: 'Sofía Díaz', answered: false }] },
-                    { name: 'Club de Boxeo', athletes: [{ name: 'Ricardo Morales', answered: false }, { name: 'Valeria Castro', answered: false }] },
-                    { name: 'Natación', athletes: [{ name: 'Daniel Vargas', answered: false }, { name: 'Camila Rojas', answered: false }] },
-                    { name: 'Polo Acuático', athletes: [{ name: 'Diego Herrera', answered: false }, { name: 'Isabella Gómez', answered: false }] },
-                    { name: 'Submarinismo', athletes: [{ name: 'Andrés Silva', answered: false }, { name: 'Gabriela Torres', answered: false }] },
-                    { name: 'Club de Esgrima', athletes: [{ name: 'Javier Navarro', answered: false }, { name: 'Paola Ortiz', answered: false }] },
-                    { name: 'Club de Excursionismo', athletes: [{ name: 'Fernando Pardo', answered: false }, { name: 'Elena Ramos', answered: false }] },
-                    { name: 'Club de Fútbol', athletes: [{ name: 'Luis Quintero', answered: false }, { name: 'Sara Salazar', answered: false }] },
-                    { name: 'Club de Fútbol Sala', athletes: [{ name: 'Jorge Blanco', answered: false }, { name: 'Martina Gil', answered: false }] },
-                    { name: 'Club de Gimnasia Rítmica', athletes: [{ name: 'Pablo Domínguez', answered: false }, { name: 'Lucía Vega', answered: false }] },
-                    { name: 'Club de Judo', athletes: [{ name: 'Roberto Castro', answered: false }, { name: 'Andrea Flores', answered: false }] },
-                    { name: 'Club de Karate-Do (Shito Ryu Sosei Kay)', athletes: [{ name: 'Sergio Guerrero', answered: false }, { name: 'Natalia Ibarra', answered: false }] },
-                    { name: 'Club de Karate Libre', athletes: [{ name: 'Manuel Jiménez', answered: false }, { name: 'Victoria León', answered: false }] },
-                    { name: 'Club de Kenpo', athletes: [{ name: 'Alejandro Mendoza', answered: false }, { name: 'Carolina Núñez', answered: false }] },
-                    { name: 'Club de Kickingball', athletes: [{ name: 'Francisco Ochoa', answered: false }, { name: 'Emilia Peña', answered: false }] },
-                    { name: 'Club de Kung-Fu Mantis', athletes: [{ name: 'Arturo Quiroz', answered: false }, { name: 'Sofía Rivas', answered: false }] },
-                    { name: 'Club de Kung-Fu Pajoj Pai', athletes: [{ name: 'Gustavo Sánchez', answered: false }, { name: 'Mariana Téllez', answered: false }] },
-                    { name: 'Club de Levantamiento de Pesas', athletes: [{ name: 'Héctor Urbina', answered: false }, { name: 'Daniela Valdés', answered: false }] },
-                    { name: 'Club de Lucha', athletes: [{ name: 'Iván Zamora', answered: false }, { name: 'Paula Acosta', answered: false }] },
-                    { name: 'Club de Rugby', athletes: [{ name: 'Óscar Bustamante', answered: false }, { name: 'Julia Cordero', answered: false }] },
-                    { name: 'Club de Salto Ornamental', athletes: [{ name: 'Benjamín Delgado', answered: false }, { name: 'Alexa Espinosa', answered: false }] },
-                    { name: 'Club de Softbol', athletes: [{ name: 'Cristian Fuentes', answered: false }, { name: 'Renata Gallegos', answered: false }] },
-                    { name: 'Club de Taekwondo', athletes: [{ name: 'Felipe Hernández', answered: false }, { name: 'Ximena Islas', answered: false }] },
-                    { name: 'Club de Tenis', athletes: [{ name: 'Gabriel Juárez', answered: false }, { name: 'Zoe Luna', answered: false }] },
-                    { name: 'Club de Tenis de Mesa', athletes: [{ name: 'José Montes', answered: false }, { name: 'Natalia Naranjo', answered: false }] },
-                    { name: 'Club de Voleibol', athletes: [{ name: 'Luis Oviedo', answered: false }, { name: 'Andrea Pineda', answered: false }] },
-                    { name: 'Club de Voleibol Arena', athletes: [{ name: 'Marco Quiroga', answered: false }, { name: 'Isabel Reyes', answered: false }] },
-                    { name: 'Club de Yoga', athletes: [{ name: 'Nicolás Solís', answered: false }, { name: 'Olivia Trejo', answered: false }] }
-                ]
-            };
+            // --- Firebase Initialization ---
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
 
-            // Load data from localStorage or use default
-            function loadData() {
-                const storedData = localStorage.getItem('athleteTrackerData');
-                if (storedData) {
-                    appData = JSON.parse(storedData);
-                }
+            let app;
+            let db;
+            let auth;
+            let userId;
+            let isAuthReady = false; // Flag to indicate if auth state is ready
+
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId;
+                        isAuthReady = true;
+                        console.log("Firebase user authenticated:", userId);
+                        await loadData(); // Load data once authenticated
+                    } else {
+                        // Sign in anonymously if no initial auth token is provided
+                        try {
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Error during Firebase anonymous sign-in:", error);
+                            userIdDisplay.textContent = 'Error de autenticación';
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                userIdDisplay.textContent = 'Error de inicialización de Firebase';
             }
 
-            // Save data to localStorage
-            function saveData() {
-                localStorage.setItem('athleteTrackerData', JSON.stringify(appData));
+
+            // --- Custom Modal Functions (replacing prompt/confirm) ---
+            function showPromptModal(title, placeholder, defaultValue = '') {
+                return new Promise((resolve) => {
+                    promptModalTitle.textContent = title;
+                    promptModalInput.placeholder = placeholder;
+                    promptModalInput.value = defaultValue;
+                    promptModal.classList.remove('hidden');
+
+                    const handleOk = () => {
+                        promptModal.classList.add('hidden');
+                        resolve(promptModalInput.value);
+                        removeListeners();
+                    };
+
+                    const handleCancel = () => {
+                        promptModal.classList.add('hidden');
+                        resolve(null);
+                        removeListeners();
+                    };
+
+                    const removeListeners = () => {
+                        promptModalOk.removeEventListener('click', handleOk);
+                        promptModalCancel.removeEventListener('click', handleCancel);
+                        closePromptModal.removeEventListener('click', handleCancel);
+                    };
+
+                    promptModalOk.addEventListener('click', handleOk);
+                    promptModalCancel.addEventListener('click', handleCancel);
+                    closePromptModal.addEventListener('click', handleCancel);
+                });
+            }
+
+            function showConfirmModal(title, message) {
+                return new Promise((resolve) => {
+                    confirmModalTitle.textContent = title;
+                    confirmModalContent.textContent = message;
+                    confirmModal.classList.remove('hidden');
+
+                    const handleConfirm = () => {
+                        confirmModal.classList.add('hidden');
+                        resolve(true);
+                        removeListeners();
+                    };
+
+                    const handleCancel = () => {
+                        confirmModal.classList.add('hidden');
+                        resolve(false);
+                        removeListeners();
+                    };
+
+                    const removeListeners = () => {
+                        confirmModalOk.removeEventListener('click', handleConfirm);
+                        confirmModalCancel.removeEventListener('click', handleCancel);
+                        closeConfirmModal.removeEventListener('click', handleCancel);
+                    };
+
+                    confirmModalOk.addEventListener('click', handleConfirm);
+                    confirmModalCancel.addEventListener('click', handleCancel);
+                    closeConfirmModal.addEventListener('click', handleCancel);
+                });
+            }
+
+
+            // --- Data Management (Firestore) ---
+            async function loadData() {
+                if (!isAuthReady || !db || !userId) {
+                    console.log("Firebase not ready for data loading.");
+                    return;
+                }
+
+                // Listen for changes in disciplines collection
+                const disciplinesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines`);
+                onSnapshot(disciplinesColRef, async (snapshot) => {
+                    const fetchedDisciplines = [];
+                    for (const docSnapshot of snapshot.docs) {
+                        const disciplineData = docSnapshot.data();
+                        const disciplineId = docSnapshot.id;
+
+                        // Fetch athletes for each discipline
+                        const athletesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${disciplineId}/athletes`);
+                        const athletesSnapshot = await getDocs(athletesColRef);
+                        const athletes = athletesSnapshot.docs.map(athleteDoc => ({
+                            id: athleteDoc.id,
+                            ...athleteDoc.data()
+                        }));
+
+                        fetchedDisciplines.push({
+                            id: disciplineId,
+                            name: disciplineData.name,
+                            athletes: athletes
+                        });
+                    }
+                    appData.disciplines = fetchedDisciplines;
+                    renderDisciplines();
+                    renderAdminDisciplines();
+                    populateAdminDisciplineSelect();
+                    renderAdminAthletes(); // Re-render athletes if admin panel is open
+                }, (error) => {
+                    console.error("Error fetching disciplines:", error);
+                    showMessageModal('Error de Carga', 'No se pudieron cargar las disciplinas. Por favor, recarga la página.');
+                });
+
+                // Add initial data if disciplines collection is empty
+                const initialCheck = await getDocs(disciplinesColRef);
+                if (initialCheck.empty) {
+                    console.log("No disciplines found, adding initial data...");
+                    const initialDisciplines = [
+                        { name: 'Club de Ajedrez', athletes: [{ name: 'Juan Pérez', answered: false }, { name: 'Ana García', answered: false }] },
+                        { name: 'Club de Atletismo', athletes: [{ name: 'Carlos Ruiz', answered: false }, { name: 'María López', answered: false }] },
+                        { name: 'Club de Baloncesto', athletes: [{ name: 'Pedro Martínez', answered: false }, { name: 'Laura Fernández', answered: false }] },
+                        { name: 'Club de Beisbol', athletes: [{ name: 'Miguel Soto', answered: false }, { name: 'Sofía Díaz', answered: false }] },
+                        { name: 'Club de Boxeo', athletes: [{ name: 'Ricardo Morales', answered: false }, { name: 'Valeria Castro', answered: false }] },
+                        { name: 'Natación', athletes: [{ name: 'Daniel Vargas', answered: false }, { name: 'Camila Rojas', answered: false }] },
+                        { name: 'Polo Acuático', athletes: [{ name: 'Diego Herrera', answered: false }, { name: 'Isabella Gómez', answered: false }] },
+                        { name: 'Submarinismo', athletes: [{ name: 'Andrés Silva', answered: false }, { name: 'Gabriela Torres', answered: false }] },
+                        { name: 'Club de Esgrima', athletes: [{ name: 'Javier Navarro', answered: false }, { name: 'Paola Ortiz', answered: false }] },
+                        { name: 'Club de Excursionismo', athletes: [{ name: 'Fernando Pardo', answered: false }, { name: 'Elena Ramos', answered: false }] },
+                        { name: 'Club de Fútbol', athletes: [{ name: 'Luis Quintero', answered: false }, { name: 'Sara Salazar', answered: false }] },
+                        { name: 'Club de Fútbol Sala', athletes: [{ name: 'Jorge Blanco', answered: false }, { name: 'Martina Gil', answered: false }] },
+                        { name: 'Club de Gimnasia Rítmica', athletes: [{ name: 'Pablo Domínguez', answered: false }, { name: 'Lucía Vega', answered: false }] },
+                        { name: 'Club de Judo', athletes: [{ name: 'Roberto Castro', answered: false }, { name: 'Andrea Flores', answered: false }] },
+                        { name: 'Club de Karate-Do (Shito Ryu Sosei Kay)', athletes: [{ name: 'Sergio Guerrero', answered: false }, { name: 'Natalia Ibarra', answered: false }] },
+                        { name: 'Club de Karate Libre', athletes: [{ name: 'Manuel Jiménez', answered: false }, { name: 'Victoria León', answered: false }] },
+                        { name: 'Club de Kenpo', athletes: [{ name: 'Alejandro Mendoza', answered: false }, { name: 'Carolina Núñez', answered: false }] },
+                        { name: 'Club de Kickingball', athletes: [{ name: 'Francisco Ochoa', answered: false }, { name: 'Emilia Peña', answered: false }] },
+                        { name: 'Club de Kung-Fu Mantis', athletes: [{ name: 'Arturo Quiroz', answered: false }, { name: 'Sofía Rivas', answered: false }] },
+                        { name: 'Club de Kung-Fu Pajoj Pai', athletes: [{ name: 'Gustavo Sánchez', answered: false }, { name: 'Mariana Téllez', answered: false }] },
+                        { name: 'Club de Levantamiento de Pesas', athletes: [{ name: 'Héctor Urbina', answered: false }, { name: 'Daniela Valdés', answered: false }] },
+                        { name: 'Club de Lucha', athletes: [{ name: 'Iván Zamora', answered: false }, { name: 'Paula Acosta', answered: false }] },
+                        { name: 'Club de Rugby', athletes: [{ name: 'Óscar Bustamante', answered: false }, { name: 'Julia Cordero', answered: false }] },
+                        { name: 'Club de Salto Ornamental', athletes: [{ name: 'Benjamín Delgado', answered: false }, { name: 'Alexa Espinosa', answered: false }] },
+                        { name: 'Club de Softbol', athletes: [{ name: 'Cristian Fuentes', answered: false }, { name: 'Renata Gallegos', answered: false }] },
+                        { name: 'Club de Taekwondo', athletes: [{ name: 'Felipe Hernández', answered: false }, { name: 'Ximena Islas', answered: false }] },
+                        { name: 'Club de Tenis', athletes: [{ name: 'Gabriel Juárez', answered: false }, { name: 'Zoe Luna', answered: false }] },
+                        { name: 'Club de Tenis de Mesa', athletes: [{ name: 'José Montes', answered: false }, { name: 'Natalia Naranjo', answered: false }] },
+                        { name: 'Club de Voleibol', athletes: [{ name: 'Luis Oviedo', answered: false }, { name: 'Andrea Pineda', answered: false }] },
+                        { name: 'Club de Voleibol Arena', athletes: [{ name: 'Marco Quiroga', answered: false }, { name: 'Isabel Reyes', answered: false }] },
+                        { name: 'Club de Yoga', athletes: [{ name: 'Nicolás Solís', answered: false }, { name: 'Olivia Trejo', answered: false }] }
+                    ];
+
+                    for (const discipline of initialDisciplines) {
+                        try {
+                            const docRef = await addDoc(disciplinesColRef, { name: discipline.name });
+                            const athletesColRefForNewDiscipline = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${docRef.id}/athletes`);
+                            for (const athlete of discipline.athletes) {
+                                await addDoc(athletesColRefForNewDiscipline, athlete);
+                            }
+                        } catch (e) {
+                            console.error("Error adding initial discipline or athlete: ", e);
+                        }
+                    }
+                }
             }
 
             // --- UI Rendering Functions ---
@@ -368,25 +592,25 @@
                     const button = document.createElement('button');
                     button.className = 'discipline-button bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 text-lg';
                     button.textContent = discipline.name;
-                    button.dataset.disciplineName = discipline.name;
-                    button.addEventListener('click', () => showAthletes(discipline.name));
+                    button.dataset.disciplineId = discipline.id; // Use discipline ID
+                    button.addEventListener('click', () => showAthletes(discipline.id));
                     disciplinesContainer.appendChild(button);
                 });
             }
 
-            function showAthletes(disciplineName) {
-                currentDiscipline = appData.disciplines.find(d => d.name === disciplineName);
+            function showAthletes(disciplineId) {
+                currentDiscipline = appData.disciplines.find(d => d.id === disciplineId);
                 if (!currentDiscipline) return;
 
-                athletesTitle.textContent = `Atletas de ${disciplineName}`;
+                athletesTitle.textContent = `Atletas de ${currentDiscipline.name}`;
                 athletesContainer.innerHTML = '';
 
                 currentDiscipline.athletes.forEach(athlete => {
                     const button = document.createElement('button');
                     button.className = `athlete-button font-bold py-3 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 text-lg ${athlete.answered ? 'answered' : 'pending'} text-white`;
                     button.textContent = athlete.name;
-                    button.dataset.athleteName = athlete.name;
-                    button.addEventListener('click', () => showQuestionnaire(athlete.name));
+                    button.dataset.athleteId = athlete.id; // Use athlete ID
+                    button.addEventListener('click', () => showQuestionnaire(athlete.id));
                     athletesContainer.appendChild(button);
                 });
 
@@ -396,11 +620,11 @@
                 adminSection.classList.add('hidden');
             }
 
-            function showQuestionnaire(athleteName) {
-                currentAthlete = currentDiscipline.athletes.find(a => a.name === athleteName);
+            function showQuestionnaire(athleteId) {
+                currentAthlete = currentDiscipline.athletes.find(a => a.id === athleteId);
                 if (!currentAthlete) return;
 
-                questionnaireTitle.textContent = `Cuestionario de Seguimiento para ${athleteName}`;
+                questionnaireTitle.textContent = `Cuestionario de Seguimiento para ${currentAthlete.name}`;
                 athleteQuestionnaireForm.reset(); // Clear previous form data
 
                 disciplinesSection.classList.add('hidden');
@@ -439,7 +663,7 @@
 
             // --- Event Listeners ---
             backToDisciplinesBtn.addEventListener('click', showMainPage);
-            backToAthletesBtn.addEventListener('click', () => showAthletes(currentDiscipline.name));
+            backToAthletesBtn.addEventListener('click', () => showAthletes(currentDiscipline.id));
             adminButton.addEventListener('click', () => passwordModal.classList.remove('hidden'));
             closePasswordModal.addEventListener('click', () => {
                 passwordModal.classList.add('hidden');
@@ -462,7 +686,7 @@
             closeMessageModal.addEventListener('click', hideMessageModal);
             messageModalOk.addEventListener('click', hideMessageModal);
 
-            athleteQuestionnaireForm.addEventListener('submit', (e) => {
+            athleteQuestionnaireForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
                 const formData = new FormData(athleteQuestionnaireForm);
@@ -475,14 +699,21 @@
                 console.log(`Sending questionnaire for ${currentAthlete.name} (${currentDiscipline.name}):`, questionnaireData);
                 showMessageModal('Cuestionario Enviado', `¡Gracias! El cuestionario de ${currentAthlete.name} ha sido registrado. (Simulado)`);
 
-                // Update athlete status
-                currentAthlete.answered = true;
-                saveData();
+                // Update athlete status in Firestore
+                try {
+                    const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, currentAthlete.id);
+                    await updateDoc(athleteDocRef, { answered: true });
+                    console.log("Athlete status updated in Firestore.");
+                } catch (error) {
+                    console.error("Error updating athlete status in Firestore:", error);
+                    showMessageModal('Error', 'No se pudo actualizar el estado del atleta en la base de datos.');
+                }
+
 
                 // Go back to athletes list
                 setTimeout(() => {
                     hideMessageModal();
-                    showAthletes(currentDiscipline.name);
+                    showAthletes(currentDiscipline.id);
                 }, 1500); // Give user time to read message
             });
 
@@ -523,14 +754,14 @@
 
             function renderAdminDisciplines() {
                 adminDisciplinesList.innerHTML = '';
-                appData.disciplines.forEach((discipline, index) => {
+                appData.disciplines.forEach((discipline) => {
                     const div = document.createElement('div');
                     div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded-md shadow-sm';
                     div.innerHTML = `
                         <span class="text-gray-800">${discipline.name}</span>
                         <div>
-                            <button data-index="${index}" class="edit-discipline-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
-                            <button data-index="${index}" class="delete-discipline-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
+                            <button data-id="${discipline.id}" class="edit-discipline-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
+                            <button data-id="${discipline.id}" class="delete-discipline-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
                         </div>
                     `;
                     adminDisciplinesList.appendChild(div);
@@ -540,43 +771,65 @@
 
             function addAdminDisciplineListeners() {
                 document.querySelectorAll('.edit-discipline-btn').forEach(button => {
-                    button.onclick = (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        const newName = prompt('Introduce el nuevo nombre para la disciplina:', appData.disciplines[index].name);
+                    button.onclick = async (e) => {
+                        const disciplineId = e.target.dataset.id;
+                        const discipline = appData.disciplines.find(d => d.id === disciplineId);
+                        if (!discipline) return;
+
+                        const newName = await showPromptModal('Editar Disciplina', 'Introduce el nuevo nombre para la disciplina:', discipline.name);
                         if (newName && newName.trim() !== '') {
-                            appData.disciplines[index].name = newName.trim();
-                            saveData();
-                            renderAdminDisciplines();
-                            populateAdminDisciplineSelect();
-                            renderDisciplines(); // Update main page
+                            try {
+                                const docRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines`, disciplineId);
+                                await updateDoc(docRef, { name: newName.trim() });
+                                showMessageModal('Éxito', 'Disciplina actualizada correctamente.');
+                            } catch (error) {
+                                console.error("Error updating discipline:", error);
+                                showMessageModal('Error', 'No se pudo actualizar la disciplina.');
+                            }
                         }
                     };
                 });
                 document.querySelectorAll('.delete-discipline-btn').forEach(button => {
-                    button.onclick = (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        if (confirm(`¿Estás seguro de que quieres eliminar la disciplina "${appData.disciplines[index].name}"?`)) {
-                            appData.disciplines.splice(index, 1);
-                            saveData();
-                            renderAdminDisciplines();
-                            populateAdminDisciplineSelect();
-                            renderDisciplines(); // Update main page
-                            renderAdminAthletes(); // Clear athlete list if discipline deleted
+                    button.onclick = async (e) => {
+                        const disciplineId = e.target.dataset.id;
+                        const discipline = appData.disciplines.find(d => d.id === disciplineId);
+                        if (!discipline) return;
+
+                        const confirmed = await showConfirmModal('Confirmar Eliminación', `¿Estás seguro de que quieres eliminar la disciplina "${discipline.name}" y todos sus atletas?`);
+                        if (confirmed) {
+                            try {
+                                // Delete athletes subcollection first
+                                const athletesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${disciplineId}/athletes`);
+                                const athletesSnapshot = await getDocs(athletesColRef);
+                                const deleteAthletePromises = athletesSnapshot.docs.map(athleteDoc => deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/disciplines/${disciplineId}/athletes`, athleteDoc.id)));
+                                await Promise.all(deleteAthletePromises);
+
+                                // Then delete the discipline document
+                                const docRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines`, disciplineId);
+                                await deleteDoc(docRef);
+                                showMessageModal('Éxito', 'Disciplina eliminada correctamente.');
+                            } catch (error) {
+                                console.error("Error deleting discipline:", error);
+                                showMessageModal('Error', 'No se pudo eliminar la disciplina.');
+                            }
                         }
                     };
                 });
             }
 
-            addDisciplineButton.addEventListener('click', () => {
+            addDisciplineButton.addEventListener('click', async () => {
                 const name = disciplineNameInput.value.trim();
                 if (name) {
                     if (!appData.disciplines.some(d => d.name === name)) {
-                        appData.disciplines.push({ name: name, athletes: [] });
-                        saveData();
-                        disciplineNameInput.value = '';
-                        renderAdminDisciplines();
-                        populateAdminDisciplineSelect();
-                        renderDisciplines(); // Update main page
+                        try {
+                            const disciplinesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines`);
+                            await addDoc(disciplinesColRef, { name: name });
+                            disciplineNameInput.value = '';
+                            showMessageModal('Éxito', 'Disciplina agregada correctamente.');
+                        } catch (error) {
+                            console.error("Error adding discipline:", error);
+                            showMessageModal('Error', 'No se pudo agregar la disciplina.');
+                        }
                     } else {
                         showMessageModal('Error', 'La disciplina ya existe.');
                     }
@@ -589,15 +842,15 @@
                 adminSelectDiscipline.innerHTML = '<option value="">Selecciona una disciplina</option>';
                 appData.disciplines.forEach(discipline => {
                     const option = document.createElement('option');
-                    option.value = discipline.name;
+                    option.value = discipline.id; // Use discipline ID as value
                     option.textContent = discipline.name;
                     adminSelectDiscipline.appendChild(option);
                 });
                 // Set the current discipline in the select if it's still valid
-                if (currentDiscipline && appData.disciplines.some(d => d.name === currentDiscipline.name)) {
-                    adminSelectDiscipline.value = currentDiscipline.name;
+                if (currentDiscipline && appData.disciplines.some(d => d.id === currentDiscipline.id)) {
+                    adminSelectDiscipline.value = currentDiscipline.id;
                 } else if (appData.disciplines.length > 0) {
-                    adminSelectDiscipline.value = appData.disciplines[0].name; // Select first by default
+                    adminSelectDiscipline.value = appData.disciplines[0].id; // Select first by default
                     currentDiscipline = appData.disciplines[0];
                 } else {
                     currentDiscipline = null;
@@ -606,23 +859,23 @@
             }
 
             adminSelectDiscipline.addEventListener('change', (e) => {
-                const selectedDisciplineName = e.target.value;
-                currentDiscipline = appData.disciplines.find(d => d.name === selectedDisciplineName);
+                const selectedDisciplineId = e.target.value;
+                currentDiscipline = appData.disciplines.find(d => d.id === selectedDisciplineId);
                 renderAdminAthletes();
             });
 
             function renderAdminAthletes() {
                 adminAthletesList.innerHTML = '';
                 if (currentDiscipline && currentDiscipline.athletes) {
-                    currentDiscipline.athletes.forEach((athlete, index) => {
+                    currentDiscipline.athletes.forEach((athlete) => {
                         const div = document.createElement('div');
                         div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded-md shadow-sm';
                         div.innerHTML = `
                             <span class="text-gray-800">${athlete.name}</span>
                             <div>
-                                <button data-index="${index}" class="edit-athlete-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
-                                <button data-index="${index}" class="delete-athlete-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
-                                <button data-index="${index}" class="reset-athlete-status-btn bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-1 px-3 rounded-full">Resetear Estado</button>
+                                <button data-id="${athlete.id}" class="edit-athlete-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
+                                <button data-id="${athlete.id}" class="delete-athlete-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
+                                <button data-id="${athlete.id}" class="reset-athlete-status-btn bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-1 px-3 rounded-full">Resetear Estado</button>
                             </div>
                         `;
                         adminAthletesList.appendChild(div);
@@ -633,48 +886,65 @@
 
             function addAdminAthleteListeners() {
                 document.querySelectorAll('.edit-athlete-btn').forEach(button => {
-                    button.onclick = (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        const newName = prompt('Introduce el nuevo nombre para el atleta:', currentDiscipline.athletes[index].name);
+                    button.onclick = async (e) => {
+                        const athleteId = e.target.dataset.id;
+                        const athlete = currentDiscipline.athletes.find(a => a.id === athleteId);
+                        if (!athlete) return;
+
+                        const newName = await showPromptModal('Editar Atleta', 'Introduce el nuevo nombre para el atleta:', athlete.name);
                         if (newName && newName.trim() !== '') {
-                            currentDiscipline.athletes[index].name = newName.trim();
-                            saveData();
-                            renderAdminAthletes();
-                            if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
-                                showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                            try {
+                                const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, athleteId);
+                                await updateDoc(athleteDocRef, { name: newName.trim() });
+                                showMessageModal('Éxito', 'Atleta actualizado correctamente.');
+                            } catch (error) {
+                                console.error("Error updating athlete:", error);
+                                showMessageModal('Error', 'No se pudo actualizar el atleta.');
                             }
                         }
                     };
                 });
                 document.querySelectorAll('.delete-athlete-btn').forEach(button => {
-                    button.onclick = (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        if (confirm(`¿Estás seguro de que quieres eliminar al atleta "${currentDiscipline.athletes[index].name}"?`)) {
-                            currentDiscipline.athletes.splice(index, 1);
-                            saveData();
-                            renderAdminAthletes();
-                            if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
-                                showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                    button.onclick = async (e) => {
+                        const athleteId = e.target.dataset.id;
+                        const athlete = currentDiscipline.athletes.find(a => a.id === athleteId);
+                        if (!athlete) return;
+
+                        const confirmed = await showConfirmModal('Confirmar Eliminación', `¿Estás seguro de que quieres eliminar al atleta "${athlete.name}"?`);
+                        if (confirmed) {
+                            try {
+                                const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, athleteId);
+                                await deleteDoc(athleteDocRef);
+                                showMessageModal('Éxito', 'Atleta eliminado correctamente.');
+                            } catch (error) {
+                                console.error("Error deleting athlete:", error);
+                                showMessageModal('Error', 'No se pudo eliminar el atleta.');
                             }
                         }
                     };
                 });
                 document.querySelectorAll('.reset-athlete-status-btn').forEach(button => {
-                    button.onclick = (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        if (confirm(`¿Estás seguro de que quieres resetear el estado del cuestionario para "${currentDiscipline.athletes[index].name}"?`)) {
-                            currentDiscipline.athletes[index].answered = false;
-                            saveData();
-                            renderAdminAthletes();
-                            if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
-                                showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                    button.onclick = async (e) => {
+                        const athleteId = e.target.dataset.id;
+                        const athlete = currentDiscipline.athletes.find(a => a.id === athleteId);
+                        if (!athlete) return;
+
+                        const confirmed = await showConfirmModal('Confirmar Reseteo', `¿Estás seguro de que quieres resetear el estado del cuestionario para "${athlete.name}"?`);
+                        if (confirmed) {
+                            try {
+                                const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, athleteId);
+                                await updateDoc(athleteDocRef, { answered: false });
+                                showMessageModal('Éxito', 'Estado del cuestionario reseteado.');
+                            } catch (error) {
+                                console.error("Error resetting athlete status:", error);
+                                showMessageModal('Error', 'No se pudo resetear el estado del atleta.');
                             }
                         }
                     };
                 });
             }
 
-            addAthleteButton.addEventListener('click', () => {
+            addAthleteButton.addEventListener('click', async () => {
                 const name = athleteNameInput.value.trim();
                 if (!currentDiscipline) {
                     showMessageModal('Error', 'Por favor, selecciona una disciplina primero.');
@@ -682,12 +952,14 @@
                 }
                 if (name) {
                     if (!currentDiscipline.athletes.some(a => a.name === name)) {
-                        currentDiscipline.athletes.push({ name: name, answered: false });
-                        saveData();
-                        athleteNameInput.value = '';
-                        renderAdminAthletes();
-                        if (athletesSection.classList.contains('hidden') === false && currentDiscipline.name === athletesTitle.textContent.replace('Atletas de ', '')) {
-                            showAthletes(currentDiscipline.name); // Update athlete list if currently displayed
+                        try {
+                            const athletesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`);
+                            await addDoc(athletesColRef, { name: name, answered: false });
+                            athleteNameInput.value = '';
+                            showMessageModal('Éxito', 'Atleta agregado correctamente.');
+                        } catch (error) {
+                            console.error("Error adding athlete:", error);
+                            showMessageModal('Error', 'No se pudo agregar el atleta.');
                         }
                     } else {
                         showMessageModal('Error', 'El atleta ya existe en esta disciplina.');
@@ -697,9 +969,7 @@
                 }
             });
 
-            // --- Initial Load ---
-            loadData();
-            renderDisciplines();
+            // Initial load is now handled by onAuthStateChanged
         });
     </script>
 </body>
