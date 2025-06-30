@@ -1,134 +1,248 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Administrador - Seguimiento de Atletas</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f4f8;
-      padding: 2rem;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .form-group {
-      margin-bottom: 1rem;
-    }
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-    }
-    input, select, button {
-      padding: 0.5rem;
-      width: 100%;
-      max-width: 400px;
-      margin: auto;
-      display: block;
-      margin-bottom: 1rem;
-    }
-    button {
-      background: #2c5282;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #1a365d;
-    }
-    .lista {
-      margin-top: 2rem;
-    }
-    .item {
-      background: white;
-      padding: 1rem;
-      margin-bottom: 0.5rem;
-      border-radius: 5px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Administración - Seguimiento de Atletas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <h2>Panel de Administración</h2>
-  <div id="auth">
-    <input type="password" id="clave" placeholder="Clave de administrador">
-    <button onclick="validarClave()">Entrar</button>
-  </div>
+<body class="bg-gray-100">
 
-  <div id="panel" style="display:none">
-    <h3>Agregar Disciplina</h3>
-    <input type="text" id="nueva-disciplina" placeholder="Nombre de la disciplina">
-    <button onclick="agregarDisciplina()">Agregar</button>
+  <!-- Aquí cargamos el layout con estilos, cabecera y carrusel -->
+  <div id="layout-wrapper"></div>
 
-    <h3>Agregar Atleta</h3>
-    <input type="text" id="nuevo-atleta" placeholder="Nombre del atleta">
-    <select id="disciplina-select"></select>
-    <button onclick="agregarAtleta()">Agregar</button>
+  <main class="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-xl border border-blue-200">
 
-    <div class="lista">
-      <h3>Disciplinas actuales</h3>
-      <div id="lista-disciplinas"></div>
+    <div id="loginPanel" class="mb-6">
+      <input
+        type="password"
+        id="clave"
+        placeholder="Ingrese contraseña"
+        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-xs"
+      />
+      <button
+        id="btnEntrar"
+        class="ml-2 mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow-lg transition"
+      >
+        Entrar
+      </button>
+      <p id="mensaje" class="mt-2"></p>
     </div>
-  </div>
+
+    <div id="adminPanel" class="hidden">
+
+      <h2 class="text-xl font-semibold mb-4 text-blue-800">Administrar Disciplinas</h2>
+      <input
+        id="nueva-disciplina"
+        type="text"
+        placeholder="Nueva disciplina"
+        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-sm"
+      />
+      <button
+        id="btnAgregarDisciplina"
+        class="ml-2 mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow-lg transition"
+      >
+        Agregar Disciplina
+      </button>
+
+      <ul id="lista-disciplinas" class="mt-4 max-w-sm border border-blue-200 rounded-lg shadow-inner p-4 space-y-2"></ul>
+
+      <h2 class="text-xl font-semibold mt-8 mb-4 text-blue-800">Administrar Atletas</h2>
+      <input
+        id="nuevo-atleta-nombre"
+        type="text"
+        placeholder="Nombre del atleta"
+        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-sm mb-2"
+      />
+      <select
+        id="select-disciplina"
+        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-sm mb-4"
+      >
+        <option value="">Seleccione Disciplina</option>
+      </select>
+      <button
+        id="btnAgregarAtleta"
+        class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow-lg transition"
+      >
+        Agregar Atleta
+      </button>
+
+      <ul id="lista-atletas" class="mt-4 max-w-sm border border-blue-200 rounded-lg shadow-inner p-4 space-y-2"></ul>
+
+      <div class="mt-8 text-center">
+        <button
+          id="btnExcel"
+          class="bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg shadow-lg transition"
+        >
+          Hoja de Excel
+        </button>
+        <button
+          id="btnSalir"
+          class="ml-4 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg shadow-lg transition"
+        >
+          Salir Admin
+        </button>
+      </div>
+
+      <div class="mt-6 text-center">
+        <button id="btnVolver" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-lg shadow-md transition">
+          Volver
+        </button>
+      </div>
+
+    </div>
+  </main>
 
   <script>
-    const URL = 'https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec';
-    let clave = '';
-
-    function validarClave() {
-      const input = document.getElementById('clave').value;
-      if (input === '7#pL9@xQ$2!zMnB&') {
-        clave = input;
-        document.getElementById('auth').style.display = 'none';
-        document.getElementById('panel').style.display = 'block';
-        cargarDisciplinas();
-      } else {
-        alert('Clave incorrecta');
+    // Cargar layout.html para estilos y carrusel
+    async function loadLayout() {
+      const res = await fetch('layout.html');
+      if (!res.ok) {
+        console.error('No se pudo cargar layout.html');
+        return;
       }
+      const html = await res.text();
+      document.getElementById('layout-wrapper').innerHTML = html;
+
+      // Evento para logo DAIA que regresa a la página principal
+      document.getElementById('logoDAIA').addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
     }
 
-    function cargarDisciplinas() {
-      fetch(URL)
+    // Inicializar
+    loadLayout();
+
+    const imagenes = document.querySelectorAll('.carrusel');
+    let actual = 0;
+
+    setInterval(() => {
+      if(imagenes.length > 0) {
+        imagenes[actual].classList.remove('active');
+        actual = (actual + 1) % imagenes.length;
+        imagenes[actual].classList.add('active');
+      }
+    }, 5000);
+
+    const loginPanel = document.getElementById('loginPanel');
+    const adminPanel = document.getElementById('adminPanel');
+    const mensaje = document.getElementById('mensaje');
+    const claveInput = document.getElementById('clave');
+    const btnEntrar = document.getElementById('btnEntrar');
+    const btnSalir = document.getElementById('btnSalir');
+    const btnExcel = document.getElementById('btnExcel');
+    const listaDisciplinas = document.getElementById('lista-disciplinas');
+    const listaAtletas = document.getElementById('lista-atletas');
+    const nuevaDisciplinaInput = document.getElementById('nueva-disciplina');
+    const nuevoAtletaNombreInput = document.getElementById('nuevo-atleta-nombre');
+    const selectDisciplina = document.getElementById('select-disciplina');
+
+    btnExcel.style.display = 'inline-block';
+
+    btnEntrar.addEventListener('click', () => {
+      const clave = claveInput.value.trim();
+      if (clave === '7#pL9@xQ$2!zMnB&') {
+        loginPanel.style.display = 'none';
+        adminPanel.classList.remove('hidden');
+        mensaje.textContent = '';
+        cargarDatos();
+      } else {
+        mensaje.textContent = 'Clave incorrecta.';
+        mensaje.className = 'text-red-600 font-semibold';
+      }
+    });
+
+    btnSalir.addEventListener('click', () => {
+      adminPanel.classList.add('hidden');
+      loginPanel.style.display = 'block';
+      claveInput.value = '';
+      mensaje.textContent = '';
+    });
+
+    document.getElementById('btnAgregarDisciplina').addEventListener('click', () => {
+      const nombre = nuevaDisciplinaInput.value.trim();
+      if (!nombre) return alert('Ingrese un nombre válido para la disciplina');
+      fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminKey: '7#pL9@xQ$2!zMnB&', tipo: 'nueva-disciplina', nombre })
+      })
         .then(res => res.json())
         .then(data => {
-          const lista = document.getElementById('lista-disciplinas');
-          const select = document.getElementById('disciplina-select');
-          lista.innerHTML = '';
-          select.innerHTML = '';
-          data.disciplinas.forEach(d => {
-            const div = document.createElement('div');
-            div.className = 'item';
-            div.textContent = d.nombre;
-            lista.appendChild(div);
+          if (data.status === 'ok') {
+            nuevaDisciplinaInput.value = '';
+            cargarDatos();
+          } else alert('Error al agregar disciplina');
+        })
+        .catch(() => alert('Error en la conexión'));
+    });
 
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.nombre;
-            select.appendChild(opt);
-          });
+    document.getElementById('btnAgregarAtleta').addEventListener('click', () => {
+      const nombre = nuevoAtletaNombreInput.value.trim();
+      const disciplinaId = selectDisciplina.value;
+      if (!nombre || !disciplinaId) return alert('Complete el nombre del atleta y seleccione disciplina');
+      fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminKey: '7#pL9@xQ$2!zMnB&', tipo: 'nuevo-atleta', nombre, disciplinaId })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'ok') {
+            nuevoAtletaNombreInput.value = '';
+            cargarDatos();
+          } else alert('Error al agregar atleta');
+        })
+        .catch(() => alert('Error en la conexión'));
+    });
+
+    function cargarDatos() {
+      fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec')
+        .then(res => res.json())
+        .then(data => {
+          const disciplinas = data.disciplinas;
+          renderDisciplinas(disciplinas);
+          renderSelectDisciplinas(disciplinas);
+          renderAtletas(disciplinas);
+        })
+        .catch(() => alert('Error al cargar datos'));
+    }
+
+    function renderDisciplinas(disciplinas) {
+      listaDisciplinas.innerHTML = '';
+      disciplinas.forEach(d => {
+        const li = document.createElement('li');
+        li.textContent = d.nombre;
+        li.className = 'py-1 border-b border-blue-200';
+        listaDisciplinas.appendChild(li);
+      });
+    }
+
+    function renderAtletas(disciplinas) {
+      listaAtletas.innerHTML = '';
+      disciplinas.forEach(d => {
+        d.atletas.forEach(a => {
+          const li = document.createElement('li');
+          li.textContent = `${a} (${d.nombre})`;
+          li.className = 'py-1 border-b border-blue-200';
+          listaAtletas.appendChild(li);
         });
+      });
     }
 
-    function agregarDisciplina() {
-      const nombre = document.getElementById('nueva-disciplina').value;
-      fetch(URL, {
-        method: 'POST',
-        body: JSON.stringify({ tipo: 'nueva-disciplina', nombre, adminKey: clave }),
-      })
-      .then(() => cargarDisciplinas());
+    function renderSelectDisciplinas(disciplinas) {
+      selectDisciplina.innerHTML = '<option value="">Seleccione Disciplina</option>';
+      disciplinas.forEach(d => {
+        const option = document.createElement('option');
+        option.value = d.id;
+        option.textContent = d.nombre;
+        selectDisciplina.appendChild(option);
+      });
     }
 
-    function agregarAtleta() {
-      const nombre = document.getElementById('nuevo-atleta').value;
-      const disciplinaId = document.getElementById('disciplina-select').value;
-      fetch(URL, {
-        method: 'POST',
-        body: JSON.stringify({ tipo: 'nuevo-atleta', nombre, disciplinaId, adminKey: clave })
-      })
-      .then(() => cargarDisciplinas());
-    }
+    document.getElementById('btnVolver').addEventListener('click', () => {
+      window.history.back();
+    });
   </script>
 </body>
 </html>
