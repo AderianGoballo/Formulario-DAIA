@@ -1,976 +1,495 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seguimiento de Atletas Artículo 25</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seguimiento de Atletas Artículo 25</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+      background: transparent;
+    }
+    #background-carousel {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    #background-carousel img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(8px);
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+    #background-carousel img.active {
+      opacity: 1;
+    }
 
-        // Expose Firebase functions globally for use in the main script
-        window.firebase = {
-            initializeApp,
-            getAuth,
-            signInAnonymously,
-            signInWithCustomToken,
-            onAuthStateChanged,
-            getFirestore,
-            doc,
-            getDoc,
-            addDoc,
-            setDoc,
-            updateDoc,
-            deleteDoc,
-            onSnapshot,
-            collection,
-            query,
-            where,
-            getDocs
-        };
-    </script>
-    <style>
-        /* Estilos personalizados para la paleta invernal y el carrusel */
-        :root {
-            --color-dark-blue: #1A202C; /* Tailwind's gray-900 or custom dark blue */
-            --color-medium-blue: #2B6CB0; /* Tailwind's blue-700 */
-            --color-light-blue: #90CDF4; /* Tailwind's blue-300 */
-            --color-white: #FFFFFF;
-            --color-gray-bg: #F7FAFC; /* Tailwind's gray-100 */
-            --color-answered: #68D391; /* Green for answered */
-            --color-pending: #F6AD55; /* Orange for pending */
-        }
+```
+.header-fixed {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+```
 
-        body {
-            font-family: "Inter", sans-serif;
-            background-color: var(--color-gray-bg);
-            overflow-x: hidden; /* Prevent horizontal scroll */
-        }
-
-        /* Carousel background styles */
-        .carousel-background {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center;
-            transition: background-image 1s ease-in-out;
-            z-index: -1;
-        }
-
-        /* Sticky header */
-        .header {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            transition: background-color 0.3s ease-in-out;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .header.scrolled {
-            background-color: var(--color-dark-blue); /* Darker background when scrolled */
-        }
-
-        /* Main content padding to avoid overlap with sticky header */
-        main {
-            padding-top: 80px; /* Adjust based on header height */
-        }
-
-        /* Custom scrollbar for better aesthetics */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--color-gray-bg);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--color-medium-blue);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--color-dark-blue);
-        }
-
-        /* Modal styles */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1001; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background-color: var(--color-white);
-            margin: auto;
-            padding: 2rem;
-            border-radius: 0.75rem; /* rounded-lg */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* shadow-md */
-            width: 90%;
-            max-width: 500px;
-            position: relative;
-        }
-
-        .close-button {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            position: absolute;
-            top: 10px;
-            right: 20px;
-        }
-
-        .close-button:hover,
-        .close-button:focus {
-            color: var(--color-dark-blue);
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        /* Styles for buttons based on questionnaire status */
-        .athlete-button.answered {
-            background-color: var(--color-answered);
-        }
-
-        .athlete-button.pending {
-            background-color: var(--color-pending);
-        }
-    </style>
+  </style>
 </head>
-<body class="text-gray-900">
+<body x-data="app()" x-init="startCarousel()">
+  <div id="background-carousel" aria-hidden="true">
+    <template x-for="(img, i) in carrusel" :key="i">
+      <img :src="img" :class="{ 'active': i === currentImage }" />
+    </template>
+  </div>
 
-    <!-- Carousel Background -->
-    <div id="carousel-background" class="carousel-background"></div>
+  <header
+    class="header-fixed py-4 px-6 flex justify-between items-center"
+    aria-label="Cabecera principal"
+  >
+    <img
+      src="http://www.ucv.ve/typo3temp/pics/b74500906e.gif"
+      alt="Logo DAIA"
+      class="w-12 h-12 rounded-full"
+    />
+    <h1 class="text-xl font-bold text-gray-700">
+      Seguimiento de Atletas Artículo 25
+    </h1>
+    <img
+      src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Logo_Universidad_Central_de_Venezuela.svg/960px-Logo_Universidad_Central_de_Venezuela.svg.png"
+      alt="Logo UCV"
+      class="w-12 h-12 rounded-full object-contain"
+    />
+  </header>
 
-    <!-- Header -->
-    <header id="header" class="header bg-blue-800 text-white p-4 flex items-center justify-between transition-all duration-300 ease-in-out">
-        <div class="flex items-center">
-            <img src="https://placehold.co/50x50/ADD8E6/000000?text=DAIA" alt="Logo DAIA" class="rounded-full mr-4 shadow-md">
-            <h1 class="text-2xl font-bold">Seguimiento de Atletas Artículo 25</h1>
-        </div>
-        <img src="https://placehold.co/50x50/ADD8E6/000000?text=UCV" alt="Logo UCV" class="rounded-full shadow-md">
-    </header>
+  <main class="p-4 relative z-10" aria-label="Contenido principal">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <template x-for="(club, index) in disciplinas" :key="index">
+        <div
+          class="bg-white bg-opacity-90 shadow rounded-lg p-4"
+          :aria-expanded="disciplinaActiva === club.nombre ? 'true' : 'false'"
+          :aria-controls="'atletas-' + index"
+        >
+          <h2
+            class="text-lg font-semibold mb-2 cursor-pointer text-blue-700 hover:underline"
+            @click="mostrarAtletas(club.nombre)"
+            role="button"
+            tabindex="0"
+            @keydown.enter="mostrarAtletas(club.nombre)"
+            @keydown.space.prevent="mostrarAtletas(club.nombre)"
+          >
+            <span x-text="club.nombre"></span>
+          </h2>
 
-    <!-- Main Content -->
-    <main class="container mx-auto p-6 relative z-10">
-        <!-- Disciplines Section -->
-        <section id="disciplines-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mb-8">
-            <h2 class="text-3xl font-semibold text-center mb-6 text-blue-800">Disciplinas Deportivas</h2>
-            <div id="disciplines-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                <!-- Discipline buttons will be loaded here by JS -->
-            </div>
-        </section>
-
-        <!-- Athletes Section (initially hidden) -->
-        <section id="athletes-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mb-8 hidden">
-            <button id="back-to-disciplines" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mb-6 shadow-md transition duration-300 ease-in-out">
-                &larr; Volver a Disciplinas
-            </button>
-            <h2 id="athletes-title" class="text-3xl font-semibold text-center mb-6 text-blue-800">Atletas de [Disciplina]</h2>
-            <div id="athletes-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                <!-- Athlete buttons will be loaded here by JS -->
-            </div>
-        </section>
-
-        <!-- Questionnaire Section (initially hidden) -->
-        <section id="questionnaire-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mb-8 hidden">
-            <button id="back-to-athletes" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mb-6 shadow-md transition duration-300 ease-in-out">
-                &larr; Volver a Atletas
-            </button>
-            <h2 id="questionnaire-title" class="text-3xl font-semibold text-center mb-6 text-blue-800">Cuestionario de Seguimiento para [Atleta]</h2>
-            <form id="athlete-questionnaire" class="space-y-6">
-                <div>
-                    <label for="q1" class="block text-gray-700 text-lg font-medium mb-2">¿Cómo te sientes físicamente hoy?</label>
-                    <textarea id="q1" name="physical_feeling" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out" required></textarea>
-                </div>
-                <div>
-                    <label for="q2" class="block text-gray-700 text-lg font-medium mb-2">¿Has tenido alguna lesión o molestia reciente?</label>
-                    <textarea id="q2" name="recent_injury" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out" required></textarea>
-                </div>
-                <div>
-                    <label for="q3" class="block text-gray-700 text-lg font-medium mb-2">¿Cuál es tu estado de ánimo general?</label>
-                    <select id="q3" name="mood_state" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out" required>
-                        <option value="">Selecciona...</option>
-                        <option value="Excelente">Excelente</option>
-                        <option value="Bueno">Bueno</option>
-                        <option value="Regular">Regular</option>
-                        <option value="Mal">Mal</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="q4" class="block text-gray-700 text-lg font-medium mb-2">¿Hay algo más que quieras compartir?</label>
-                    <textarea id="q4" name="additional_comments" rows="3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out"></textarea>
-                </div>
-                <button type="submit" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                    Enviar Cuestionario
+```
+      <template x-if="disciplinaActiva === club.nombre">
+        <ul
+          :id="'atletas-' + index"
+          class="mb-4"
+          aria-label="Lista de atletas"
+        >
+          <template x-for="(atleta, aIndex) in club.atletas" :key="aIndex">
+            <li>
+              <button
+                class="w-full text-left px-4 py-2 rounded mb-1"
+                :class="atleta.respondido ? 'bg-green-200' : 'bg-red-200'"
+                @click="mostrarCuestionario(club.nombre, atleta.nombre)"
+              >
+                <span x-text="atleta.nombre"></span>
+              </button>
+              <template x-if="adminAutenticado">
+                <button
+                  @click="eliminarAtleta(club.nombre, aIndex)"
+                  class="ml-2 px-2 py-1 text-red-600 hover:text-red-800"
+                  aria-label="Eliminar atleta"
+                  title="Eliminar atleta"
+                >
+                  &times;
                 </button>
-            </form>
-        </section>
-
-        <!-- Admin Button -->
-        <section class="flex justify-center mt-8">
-            <button id="admin-button" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                Acceso Administrador
+              </template>
+            </li>
+          </template>
+        </ul>
+        <template x-if="adminAutenticado">
+          <div class="flex items-center mb-4">
+            <input
+              type="text"
+              x-model="nuevoAtletaPorDisciplina[club.nombre]"
+              :placeholder="'Agregar atleta en ' + club.nombre"
+              class="flex-grow border rounded px-3 py-1"
+              @keydown.enter.prevent="agregarAtleta(club.nombre)"
+              aria-label="Nombre del nuevo atleta"
+            />
+            <button
+              @click="agregarAtleta(club.nombre)"
+              class="ml-2 px-3 py-1 bg-green-500 text-white rounded"
+              aria-label="Agregar atleta"
+            >
+              +
             </button>
-        </section>
+          </div>
+        </template>
+      </template>
+    </div>
+  </template>
+</div>
 
-        <!-- Admin Section (initially hidden) -->
-        <section id="admin-section" class="bg-white bg-opacity-90 rounded-lg shadow-xl p-8 mt-8 hidden">
-            <button id="back-to-main-from-admin" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full mb-6 shadow-md transition duration-300 ease-in-out">
-                &larr; Volver a Página Principal
+<div
+  x-show="mostrarFormulario"
+  class="mt-8 bg-white bg-opacity-90 p-6 shadow rounded"
+  aria-modal="true"
+  role="dialog"
+  aria-labelledby="form-title"
+  tabindex="-1"
+>
+  <h3 id="form-title" class="text-xl font-semibold mb-4">
+    Cuestionario de Seguimiento: <span x-text="atletaActual"></span>
+  </h3>
+  <form @submit.prevent="enviarFormulario">
+    <label class="block mb-2" for="rendimiento">
+      ¿Cómo ha sido tu rendimiento esta semana?
+      <textarea
+        id="rendimiento"
+        x-model="respuestas.rendimiento"
+        class="w-full border p-2 rounded"
+        required
+      ></textarea>
+    </label>
+    <label class="block mb-2" for="lesion">
+      ¿Tienes alguna lesión o molestia?
+      <textarea
+        id="lesion"
+        x-model="respuestas.lesion"
+        class="w-full border p-2 rounded"
+        required
+      ></textarea>
+    </label>
+    <label class="block mb-2" for="objetivos">
+      ¿Qué objetivos tienes para la próxima semana?
+      <textarea
+        id="objetivos"
+        x-model="respuestas.objetivos"
+        class="w-full border p-2 rounded"
+        required
+      ></textarea>
+    </label>
+    <button
+      type="submit"
+      class="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+    >
+      Enviar
+    </button>
+    <button
+      type="button"
+      @click="cancelarFormulario"
+      class="mt-4 ml-2 px-4 py-2 bg-gray-400 text-white rounded"
+    >
+      Cancelar
+    </button>
+  </form>
+</div>
+```
+
+  </main>
+
+  <footer
+    class="mt-10 p-4 text-center text-sm text-gray-500 relative z-10"
+    aria-label="Pie de página con acceso administrador"
+  >
+    <button
+      @click="adminVisible = true"
+      class="underline text-blue-600"
+      aria-haspopup="dialog"
+      aria-controls="admin-panel"
+    >
+      Administrador
+    </button>
+  </footer>
+
+  <div
+    x-show="adminVisible"
+    id="admin-panel"
+    class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50"
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div class="bg-white p-6 rounded shadow w-full max-w-lg max-h-[80vh] overflow-auto">
+      <template x-if="!adminAutenticado">
+        <div>
+          <h2 class="text-lg font-semibold mb-2">Acceso Administrador</h2>
+          <input
+            type="password"
+            placeholder="Contraseña"
+            x-model="claveAdmin"
+            class="w-full border p-2 rounded mb-4"
+            aria-label="Contraseña administrador"
+          />
+          <button
+            @click="verificarClave"
+            class="px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            Entrar
+          </button>
+        </div>
+      </template>
+      <template x-if="adminAutenticado">
+        <div>
+          <h2 class="text-lg font-semibold mb-4">Panel de Administración</h2>
+          <div class="mb-4">
+            <label class="block mb-1" for="nueva-disciplina"
+              >Nueva Disciplina:</label
+            >
+            <input
+              id="nueva-disciplina"
+              x-model="nuevaDisciplina"
+              class="w-full border rounded p-2"
+              placeholder="Nombre de la disciplina"
+              @keydown.enter.prevent="agregarDisciplina"
+              aria-label="Nombre nueva disciplina"
+            />
+            <button
+              @click="agregarDisciplina"
+              class="mt-2 px-3 py-1 bg-green-500 text-white rounded"
+            >
+              Agregar
             </button>
-            <h2 class="text-3xl font-semibold text-center mb-6 text-blue-800">Panel de Administración</h2>
-
-            <!-- Add/Edit Discipline -->
-            <div class="mb-8 p-6 border border-gray-200 rounded-lg">
-                <h3 class="text-2xl font-semibold mb-4 text-blue-700">Gestionar Disciplinas</h3>
-                <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                    <input type="text" id="discipline-name-input" placeholder="Nombre de la disciplina" class="flex-grow p-3 border border-gray-300 rounded-md">
-                    <button id="add-discipline-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">
-                        Agregar Disciplina
-                    </button>
+          </div>
+          <div
+            class="max-h-72 overflow-auto border p-2 rounded"
+            aria-label="Lista de disciplinas y atletas"
+          >
+            <template x-for="(club, cIndex) in disciplinas" :key="cIndex">
+              <div class="mb-4 border-b pb-2">
+                <div class="flex justify-between items-center">
+                  <span class="font-bold text-lg" x-text="club.nombre"></span>
+                  <button
+                    @click="eliminarDisciplina(cIndex)"
+                    class="ml-2 text-red-500 hover:text-red-700"
+                    aria-label="Eliminar disciplina"
+                    title="Eliminar disciplina"
+                  >
+                    &times;
+                  </button>
                 </div>
-                <div id="admin-disciplines-list" class="space-y-3">
-                    <!-- Disciplines for admin will be listed here -->
+                <ul class="mt-2">
+                  <template
+                    x-for="(atleta, aIndex) in club.atletas"
+                    :key="aIndex"
+                  >
+                    <li class="flex justify-between items-center py-1">
+                      <span x-text="atleta.nombre"></span>
+                      <button
+                        @click="eliminarAtleta(club.nombre, aIndex)"
+                        class="text-red-600 hover:text-red-800"
+                        aria-label="Eliminar atleta"
+                        title="Eliminar atleta"
+                      >
+                        &times;
+                      </button>
+                    </li>
+                  </template>
+                </ul>
+                <div class="flex items-center mt-2">
+                  <input
+                    type="text"
+                    x-model="nuevoAtletaPorDisciplina[club.nombre]"
+                    :placeholder="'Agregar atleta a ' + club.nombre"
+                    class="flex-grow border rounded px-3 py-1"
+                    @keydown.enter.prevent="agregarAtleta(club.nombre)"
+                    aria-label="Nombre nuevo atleta"
+                  />
+                  <button
+                    @click="agregarAtleta(club.nombre)"
+                    class="ml-2 px-3 py-1 bg-green-500 text-white rounded"
+                    aria-label="Agregar atleta"
+                  >
+                    +
+                  </button>
                 </div>
-            </div>
-
-            <!-- Add/Edit Athlete -->
-            <div class="p-6 border border-gray-200 rounded-lg">
-                <h3 class="text-2xl font-semibold mb-4 text-blue-700">Gestionar Atletas</h3>
-                <div class="mb-4">
-                    <label for="admin-select-discipline" class="block text-gray-700 text-lg font-medium mb-2">Seleccionar Disciplina:</label>
-                    <select id="admin-select-discipline" class="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 transition duration-200 ease-in-out">
-                        <option value="">Selecciona una disciplina</option>
-                    </select>
-                </div>
-                <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                    <input type="text" id="athlete-name-input" placeholder="Nombre del atleta" class="flex-grow p-3 border border-gray-300 rounded-md">
-                    <button id="add-athlete-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">
-                        Agregar Atleta
-                    </button>
-                </div>
-                <div id="admin-athletes-list" class="space-y-3">
-                    <!-- Athletes for selected discipline will be listed here -->
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Password Modal -->
-    <div id="password-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-button" id="close-password-modal">&times;</span>
-            <h3 class="text-2xl font-semibold mb-4 text-blue-800 text-center">Acceso de Administrador</h3>
-            <p class="mb-4 text-center">Introduce la contraseña para acceder al panel de administración.</p>
-            <input type="password" id="admin-password-input" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-blue-500 focus:border-blue-500" placeholder="Contraseña">
-            <button id="submit-password-button" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                Entrar
-            </button>
-            <p id="password-error" class="text-red-500 mt-2 text-center hidden">Contraseña incorrecta. Inténtalo de nuevo.</p>
+              </div>
+            </template>
+          </div>
+          <button
+            @click="cerrarAdmin"
+            class="mt-4 px-4 py-2 bg-gray-400 text-white rounded"
+          >
+            Cerrar
+          </button>
         </div>
+      </template>
     </div>
+  </div>
 
-    <!-- Message Modal (for questionnaire submission confirmation/status) -->
-    <div id="message-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-button" id="close-message-modal">&times;</span>
-            <h3 id="message-modal-title" class="text-2xl font-semibold mb-4 text-blue-800 text-center">Mensaje</h3>
-            <p id="message-modal-content" class="mb-4 text-center"></p>
-            <button id="message-modal-ok" class="w-full bg-blue-800 hover:bg-blue-900 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                OK
-            </button>
-        </div>
-    </div>
+  <script>
+    function app() {
+      return {
+        disciplinas: [
+          { nombre: "Club de Ajedrez", atletas: [{ nombre: "Juan Pérez", respondido: false }] },
+          { nombre: "Club de Atletismo", atletas: [{ nombre: "Ana Torres", respondido: false }] },
+          { nombre: "Club de Baloncesto", atletas: [] },
+          { nombre: "Club de Beisbol", atletas: [] },
+          { nombre: "Club de Boxeo", atletas: [] },
+          { nombre: "Natación", atletas: [] },
+          { nombre: "Polo Acuático", atletas: [] },
+          { nombre: "Submarinismo", atletas: [] },
+          { nombre: "Club de Esgrima", atletas: [] },
+          { nombre: "Club de Excursionismo", atletas: [] },
+          { nombre: "Club de Fútbol", atletas: [] },
+          { nombre: "Club de Fútbol Sala", atletas: [] },
+          { nombre: "Club de Gimnasia Rítmica", atletas: [] },
+          { nombre: "Club de Judo", atletas: [] },
+          { nombre: "Club de Karate-Do (Shito Ryu Sosei Kay)", atletas: [] },
+          { nombre: "Club de Karate Libre", atletas: [] },
+          { nombre: "Club de Kenpo", atletas: [] },
+          { nombre: "Club de Kickingball", atletas: [] },
+          { nombre: "Club de Kung-Fu Mantis", atletas: [] },
+          { nombre: "Club de Kung-Fu Pajoj Pai", atletas: [] },
+          { nombre: "Club de Levantamiento de Pesas", atletas: [] },
+          { nombre: "Club de Lucha", atletas: [] },
+          { nombre: "Club de Rugby", atletas: [] },
+          { nombre: "Club de Salto Ornamental", atletas: [] },
+          { nombre: "Club de Softbol", atletas: [] },
+          { nombre: "Club de Taekwondo", atletas: [] },
+          { nombre: "Club de Tenis", atletas: [] },
+          { nombre: "Club de Tenis de Mesa", atletas: [] },
+          { nombre: "Club de Voleibol", atletas: [] },
+          { nombre: "Club de Voleibol Arena", atletas: [] },
+          { nombre: "Club de Yoga", atletas: [] },
+        ],
+        disciplinaActiva: "",
+        atletaActual: "",
+        respuestas: { rendimiento: "", lesion: "", objetivos: "" },
+        mostrarFormulario: false,
+        adminVisible: false,
+        adminAutenticado: false,
+        claveAdmin: "",
+        nuevaDisciplina: "",
+        nuevoAtletaPorDisciplina: {},
 
-    <!-- Prompt Modal (for admin edits) -->
-    <div id="prompt-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-button" id="close-prompt-modal">&times;</span>
-            <h3 id="prompt-modal-title" class="text-2xl font-semibold mb-4 text-blue-800 text-center"></h3>
-            <input type="text" id="prompt-modal-input" class="w-full p-3 border border-gray-300 rounded-md mb-4 focus:ring-blue-500 focus:border-blue-500" placeholder="">
-            <div class="flex justify-end gap-4">
-                <button id="prompt-modal-cancel" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Cancelar</button>
-                <button id="prompt-modal-ok" class="bg-blue-800 hover:bg-blue-900 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Aceptar</button>
-            </div>
-        </div>
-    </div>
+        carrusel: [
+          "https://i0.wp.com/ultimasnoticias.com.ve/wp-content/uploads/2024/06/IMG_4144-scaled.jpg?resize=696%2C464&ssl=1",
+          "https://www.astsports.com/wp-content/uploads/2018/05/lp17_1-2.jpg",
+          "https://alzirarugby.club/wp-content/uploads/2020/06/Alzira-25-UCV-71-2019-04-06-e1592818789196.jpg",
+        ],
+        currentImage: 0,
+        startCarousel() {
+          setInterval(() => {
+            this.currentImage = (this.currentImage + 1) % this.carrusel.length;
+          }, 2000);
+        },
 
-    <!-- Confirm Modal (for admin deletions/resets) -->
-    <div id="confirm-modal" class="modal hidden">
-        <div class="modal-content">
-            <span class="close-button" id="close-confirm-modal">&times;</span>
-            <h3 id="confirm-modal-title" class="text-2xl font-semibold mb-4 text-blue-800 text-center">Confirmar Acción</h3>
-            <p id="confirm-modal-content" class="mb-4 text-center"></p>
-            <div class="flex justify-end gap-4">
-                <button id="confirm-modal-cancel" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Cancelar</button>
-                <button id="confirm-modal-ok" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-300 ease-in-out">Confirmar</button>
-            </div>
-        </div>
-    </div>
+        mostrarAtletas(nombre) {
+          this.disciplinaActiva = this.disciplinaActiva === nombre ? "" : nombre;
+        },
+        mostrarCuestionario(disciplina, atleta) {
+          this.atletaActual = atleta;
+          this.disciplinaActiva = disciplina;
+          this.mostrarFormulario = true;
+          this.respuestas = { rendimiento: "", lesion: "", objetivos: "" };
+        },
+        enviarFormulario() {
+          const payload = {
+            atleta: this.atletaActual,
+            disciplina: this.disciplinaActiva,
+            rendimiento: this.respuestas.rendimiento,
+            lesion: this.respuestas.lesion,
+            objetivos: this.respuestas.objetivos,
+          };
 
-    <footer class="text-center p-4 text-gray-600 text-sm bg-white bg-opacity-90 mt-8 rounded-lg shadow-xl">
-        <p>ID de Usuario: <span id="user-id">Cargando...</span></p>
-        <p>Desarrollado para la Universidad Central de Venezuela</p>
-    </footer>
-
-    <script type="module">
-        // Import Firebase functions from the global window object
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } = window.firebase;
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            const header = document.getElementById('header');
-            const carouselBackground = document.getElementById('carousel-background');
-            const disciplinesSection = document.getElementById('disciplines-section');
-            const athletesSection = document.getElementById('athletes-section');
-            const questionnaireSection = document.getElementById('questionnaire-section');
-            const adminSection = document.getElementById('admin-section');
-
-            const disciplinesContainer = document.getElementById('disciplines-container');
-            const athletesContainer = document.getElementById('athletes-container');
-            const athletesTitle = document.getElementById('athletes-title');
-            const questionnaireTitle = document.getElementById('questionnaire-title');
-            const athleteQuestionnaireForm = document.getElementById('athlete-questionnaire');
-
-            const backToDisciplinesBtn = document.getElementById('back-to-disciplines');
-            const backToAthletesBtn = document.getElementById('back-to-athletes');
-            const adminButton = document.getElementById('admin-button');
-            const backToMainFromAdminBtn = document.getElementById('back-to-main-from-admin');
-
-            const passwordModal = document.getElementById('password-modal');
-            const closePasswordModal = document.getElementById('close-password-modal');
-            const adminPasswordInput = document.getElementById('admin-password-input');
-            const submitPasswordButton = document.getElementById('submit-password-button');
-            const passwordError = document.getElementById('password-error');
-            const ADMIN_PASSWORD = '7#pL9@xQ$2!zMnB&'; // Admin password
-
-            const messageModal = document.getElementById('message-modal');
-            const closeMessageModal = document.getElementById('close-message-modal');
-            const messageModalTitle = document.getElementById('message-modal-title');
-            const messageModalContent = document.getElementById('message-modal-content');
-            const messageModalOk = document.getElementById('message-modal-ok');
-
-            // Custom Prompt Modal elements
-            const promptModal = document.getElementById('prompt-modal');
-            const closePromptModal = document.getElementById('close-prompt-modal');
-            const promptModalTitle = document.getElementById('prompt-modal-title');
-            const promptModalInput = document.getElementById('prompt-modal-input');
-            const promptModalCancel = document.getElementById('prompt-modal-cancel');
-            const promptModalOk = document.getElementById('prompt-modal-ok');
-
-            // Custom Confirm Modal elements
-            const confirmModal = document.getElementById('confirm-modal');
-            const closeConfirmModal = document.getElementById('close-confirm-modal');
-            const confirmModalTitle = document.getElementById('confirm-modal-title');
-            const confirmModalContent = document.getElementById('confirm-modal-content');
-            const confirmModalCancel = document.getElementById('confirm-modal-cancel');
-            const confirmModalOk = document.getElementById('confirm-modal-ok');
-
-            const userIdDisplay = document.getElementById('user-id');
-
-            let currentDiscipline = null;
-            let currentAthlete = null;
-            let appData = { disciplines: [] }; // Initial data structure, will be populated from Firestore
-
-            // --- Firebase Initialization ---
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
-            let app;
-            let db;
-            let auth;
-            let userId;
-            let isAuthReady = false; // Flag to indicate if auth state is ready
-
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplay.textContent = userId;
-                        isAuthReady = true;
-                        console.log("Firebase user authenticated:", userId);
-                        await loadData(); // Load data once authenticated
-                    } else {
-                        // Sign in anonymously if no initial auth token is provided
-                        try {
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                await signInWithCustomToken(auth, __initial_auth_token);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        } catch (error) {
-                            console.error("Error during Firebase anonymous sign-in:", error);
-                            userIdDisplay.textContent = 'Error de autenticación';
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                userIdDisplay.textContent = 'Error de inicialización de Firebase';
+          fetch(
+            "https://script.google.com/macros/s/AKfycbybMauVy1_rVK7yRRQQ9L0X4ZxS9cISOOSkp1oJ-1xtmyEPBBhYTx9NnNHKQPgWH1A/exec",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
             }
-
-
-            // --- Custom Modal Functions (replacing prompt/confirm) ---
-            function showPromptModal(title, placeholder, defaultValue = '') {
-                return new Promise((resolve) => {
-                    promptModalTitle.textContent = title;
-                    promptModalInput.placeholder = placeholder;
-                    promptModalInput.value = defaultValue;
-                    promptModal.classList.remove('hidden');
-
-                    const handleOk = () => {
-                        promptModal.classList.add('hidden');
-                        resolve(promptModalInput.value);
-                        removeListeners();
-                    };
-
-                    const handleCancel = () => {
-                        promptModal.classList.add('hidden');
-                        resolve(null);
-                        removeListeners();
-                    };
-
-                    const removeListeners = () => {
-                        promptModalOk.removeEventListener('click', handleOk);
-                        promptModalCancel.removeEventListener('click', handleCancel);
-                        closePromptModal.removeEventListener('click', handleCancel);
-                    };
-
-                    promptModalOk.addEventListener('click', handleOk);
-                    promptModalCancel.addEventListener('click', handleCancel);
-                    closePromptModal.addEventListener('click', handleCancel);
-                });
-            }
-
-            function showConfirmModal(title, message) {
-                return new Promise((resolve) => {
-                    confirmModalTitle.textContent = title;
-                    confirmModalContent.textContent = message;
-                    confirmModal.classList.remove('hidden');
-
-                    const handleConfirm = () => {
-                        confirmModal.classList.add('hidden');
-                        resolve(true);
-                        removeListeners();
-                    };
-
-                    const handleCancel = () => {
-                        confirmModal.classList.add('hidden');
-                        resolve(false);
-                        removeListeners();
-                    };
-
-                    const removeListeners = () => {
-                        confirmModalOk.removeEventListener('click', handleConfirm);
-                        confirmModalCancel.removeEventListener('click', handleCancel);
-                        closeConfirmModal.removeEventListener('click', handleCancel);
-                    };
-
-                    confirmModalOk.addEventListener('click', handleConfirm);
-                    confirmModalCancel.addEventListener('click', handleCancel);
-                    closeConfirmModal.addEventListener('click', handleCancel);
-                });
-            }
-
-
-            // --- Data Management (Firestore) ---
-            async function loadData() {
-                if (!isAuthReady || !db || !userId) {
-                    console.log("Firebase not ready for data loading.");
-                    return;
-                }
-
-                // Listen for changes in disciplines collection
-                const disciplinesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines`);
-                onSnapshot(disciplinesColRef, async (snapshot) => {
-                    const fetchedDisciplines = [];
-                    for (const docSnapshot of snapshot.docs) {
-                        const disciplineData = docSnapshot.data();
-                        const disciplineId = docSnapshot.id;
-
-                        // Fetch athletes for each discipline
-                        const athletesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${disciplineId}/athletes`);
-                        const athletesSnapshot = await getDocs(athletesColRef);
-                        const athletes = athletesSnapshot.docs.map(athleteDoc => ({
-                            id: athleteDoc.id,
-                            ...athleteDoc.data()
-                        }));
-
-                        fetchedDisciplines.push({
-                            id: disciplineId,
-                            name: disciplineData.name,
-                            athletes: athletes
-                        });
-                    }
-                    appData.disciplines = fetchedDisciplines;
-                    renderDisciplines();
-                    renderAdminDisciplines();
-                    populateAdminDisciplineSelect();
-                    renderAdminAthletes(); // Re-render athletes if admin panel is open
-                }, (error) => {
-                    console.error("Error fetching disciplines:", error);
-                    showMessageModal('Error de Carga', 'No se pudieron cargar las disciplinas. Por favor, recarga la página.');
-                });
-
-                // Add initial data if disciplines collection is empty
-                const initialCheck = await getDocs(disciplinesColRef);
-                if (initialCheck.empty) {
-                    console.log("No disciplines found, adding initial data...");
-                    const initialDisciplines = [
-                        { name: 'Club de Ajedrez', athletes: [{ name: 'Juan Pérez', answered: false }, { name: 'Ana García', answered: false }] },
-                        { name: 'Club de Atletismo', athletes: [{ name: 'Carlos Ruiz', answered: false }, { name: 'María López', answered: false }] },
-                        { name: 'Club de Baloncesto', athletes: [{ name: 'Pedro Martínez', answered: false }, { name: 'Laura Fernández', answered: false }] },
-                        { name: 'Club de Beisbol', athletes: [{ name: 'Miguel Soto', answered: false }, { name: 'Sofía Díaz', answered: false }] },
-                        { name: 'Club de Boxeo', athletes: [{ name: 'Ricardo Morales', answered: false }, { name: 'Valeria Castro', answered: false }] },
-                        { name: 'Natación', athletes: [{ name: 'Daniel Vargas', answered: false }, { name: 'Camila Rojas', answered: false }] },
-                        { name: 'Polo Acuático', athletes: [{ name: 'Diego Herrera', answered: false }, { name: 'Isabella Gómez', answered: false }] },
-                        { name: 'Submarinismo', athletes: [{ name: 'Andrés Silva', answered: false }, { name: 'Gabriela Torres', answered: false }] },
-                        { name: 'Club de Esgrima', athletes: [{ name: 'Javier Navarro', answered: false }, { name: 'Paola Ortiz', answered: false }] },
-                        { name: 'Club de Excursionismo', athletes: [{ name: 'Fernando Pardo', answered: false }, { name: 'Elena Ramos', answered: false }] },
-                        { name: 'Club de Fútbol', athletes: [{ name: 'Luis Quintero', answered: false }, { name: 'Sara Salazar', answered: false }] },
-                        { name: 'Club de Fútbol Sala', athletes: [{ name: 'Jorge Blanco', answered: false }, { name: 'Martina Gil', answered: false }] },
-                        { name: 'Club de Gimnasia Rítmica', athletes: [{ name: 'Pablo Domínguez', answered: false }, { name: 'Lucía Vega', answered: false }] },
-                        { name: 'Club de Judo', athletes: [{ name: 'Roberto Castro', answered: false }, { name: 'Andrea Flores', answered: false }] },
-                        { name: 'Club de Karate-Do (Shito Ryu Sosei Kay)', athletes: [{ name: 'Sergio Guerrero', answered: false }, { name: 'Natalia Ibarra', answered: false }] },
-                        { name: 'Club de Karate Libre', athletes: [{ name: 'Manuel Jiménez', answered: false }, { name: 'Victoria León', answered: false }] },
-                        { name: 'Club de Kenpo', athletes: [{ name: 'Alejandro Mendoza', answered: false }, { name: 'Carolina Núñez', answered: false }] },
-                        { name: 'Club de Kickingball', athletes: [{ name: 'Francisco Ochoa', answered: false }, { name: 'Emilia Peña', answered: false }] },
-                        { name: 'Club de Kung-Fu Mantis', athletes: [{ name: 'Arturo Quiroz', answered: false }, { name: 'Sofía Rivas', answered: false }] },
-                        { name: 'Club de Kung-Fu Pajoj Pai', athletes: [{ name: 'Gustavo Sánchez', answered: false }, { name: 'Mariana Téllez', answered: false }] },
-                        { name: 'Club de Levantamiento de Pesas', athletes: [{ name: 'Héctor Urbina', answered: false }, { name: 'Daniela Valdés', answered: false }] },
-                        { name: 'Club de Lucha', athletes: [{ name: 'Iván Zamora', answered: false }, { name: 'Paula Acosta', answered: false }] },
-                        { name: 'Club de Rugby', athletes: [{ name: 'Óscar Bustamante', answered: false }, { name: 'Julia Cordero', answered: false }] },
-                        { name: 'Club de Salto Ornamental', athletes: [{ name: 'Benjamín Delgado', answered: false }, { name: 'Alexa Espinosa', answered: false }] },
-                        { name: 'Club de Softbol', athletes: [{ name: 'Cristian Fuentes', answered: false }, { name: 'Renata Gallegos', answered: false }] },
-                        { name: 'Club de Taekwondo', athletes: [{ name: 'Felipe Hernández', answered: false }, { name: 'Ximena Islas', answered: false }] },
-                        { name: 'Club de Tenis', athletes: [{ name: 'Gabriel Juárez', answered: false }, { name: 'Zoe Luna', answered: false }] },
-                        { name: 'Club de Tenis de Mesa', athletes: [{ name: 'José Montes', answered: false }, { name: 'Natalia Naranjo', answered: false }] },
-                        { name: 'Club de Voleibol', athletes: [{ name: 'Luis Oviedo', answered: false }, { name: 'Andrea Pineda', answered: false }] },
-                        { name: 'Club de Voleibol Arena', athletes: [{ name: 'Marco Quiroga', answered: false }, { name: 'Isabel Reyes', answered: false }] },
-                        { name: 'Club de Yoga', athletes: [{ name: 'Nicolás Solís', answered: false }, { name: 'Olivia Trejo', answered: false }] }
-                    ];
-
-                    for (const discipline of initialDisciplines) {
-                        try {
-                            const docRef = await addDoc(disciplinesColRef, { name: discipline.name });
-                            const athletesColRefForNewDiscipline = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${docRef.id}/athletes`);
-                            for (const athlete of discipline.athletes) {
-                                await addDoc(athletesColRefForNewDiscipline, athlete);
-                            }
-                        } catch (e) {
-                            console.error("Error adding initial discipline or athlete: ", e);
-                        }
-                    }
-                }
-            }
-
-            // --- UI Rendering Functions ---
-            function renderDisciplines() {
-                disciplinesContainer.innerHTML = '';
-                appData.disciplines.forEach(discipline => {
-                    const button = document.createElement('button');
-                    button.className = 'discipline-button bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 text-lg';
-                    button.textContent = discipline.name;
-                    button.dataset.disciplineId = discipline.id; // Use discipline ID
-                    button.addEventListener('click', () => showAthletes(discipline.id));
-                    disciplinesContainer.appendChild(button);
-                });
-            }
-
-            function showAthletes(disciplineId) {
-                currentDiscipline = appData.disciplines.find(d => d.id === disciplineId);
-                if (!currentDiscipline) return;
-
-                athletesTitle.textContent = `Atletas de ${currentDiscipline.name}`;
-                athletesContainer.innerHTML = '';
-
-                currentDiscipline.athletes.forEach(athlete => {
-                    const button = document.createElement('button');
-                    button.className = `athlete-button font-bold py-3 px-5 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 text-lg ${athlete.answered ? 'answered' : 'pending'} text-white`;
-                    button.textContent = athlete.name;
-                    button.dataset.athleteId = athlete.id; // Use athlete ID
-                    button.addEventListener('click', () => showQuestionnaire(athlete.id));
-                    athletesContainer.appendChild(button);
-                });
-
-                disciplinesSection.classList.add('hidden');
-                athletesSection.classList.remove('hidden');
-                questionnaireSection.classList.add('hidden');
-                adminSection.classList.add('hidden');
-            }
-
-            function showQuestionnaire(athleteId) {
-                currentAthlete = currentDiscipline.athletes.find(a => a.id === athleteId);
-                if (!currentAthlete) return;
-
-                questionnaireTitle.textContent = `Cuestionario de Seguimiento para ${currentAthlete.name}`;
-                athleteQuestionnaireForm.reset(); // Clear previous form data
-
-                disciplinesSection.classList.add('hidden');
-                athletesSection.classList.add('hidden');
-                questionnaireSection.classList.remove('hidden');
-                adminSection.classList.add('hidden');
-            }
-
-            function showMainPage() {
-                disciplinesSection.classList.remove('hidden');
-                athletesSection.classList.add('hidden');
-                questionnaireSection.classList.add('hidden');
-                adminSection.classList.add('hidden');
-                renderDisciplines(); // Re-render disciplines to reflect any admin changes
-            }
-
-            function showAdminPanel() {
-                disciplinesSection.classList.add('hidden');
-                athletesSection.classList.add('hidden');
-                questionnaireSection.classList.add('hidden');
-                adminSection.classList.remove('hidden');
-                renderAdminDisciplines();
-                populateAdminDisciplineSelect();
-                renderAdminAthletes(); // Render athletes for the initially selected discipline
-            }
-
-            function showMessageModal(title, content) {
-                messageModalTitle.textContent = title;
-                messageModalContent.textContent = content;
-                messageModal.classList.remove('hidden');
-            }
-
-            function hideMessageModal() {
-                messageModal.classList.add('hidden');
-            }
-
-            // --- Event Listeners ---
-            backToDisciplinesBtn.addEventListener('click', showMainPage);
-            backToAthletesBtn.addEventListener('click', () => showAthletes(currentDiscipline.id));
-            adminButton.addEventListener('click', () => passwordModal.classList.remove('hidden'));
-            closePasswordModal.addEventListener('click', () => {
-                passwordModal.classList.add('hidden');
-                passwordError.classList.add('hidden');
-                adminPasswordInput.value = '';
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "ok") {
+                const club = this.disciplinas.find(
+                  (c) => c.nombre === this.disciplinaActiva
+                );
+                const atleta = club.atletas.find(
+                  (a) => a.nombre === this.atletaActual
+                );
+                atleta.respondido = true;
+                this.mostrarFormulario = false;
+                this.respuestas = { rendimiento: "", lesion: "", objetivos: "" };
+              } else {
+                alert("Hubo un error al enviar los datos: " + data.message);
+              }
+            })
+            .catch((error) => {
+              alert("Error de red o del servidor: " + error.message);
             });
-            backToMainFromAdminBtn.addEventListener('click', showMainPage);
-
-            submitPasswordButton.addEventListener('click', () => {
-                if (adminPasswordInput.value === ADMIN_PASSWORD) {
-                    passwordModal.classList.add('hidden');
-                    passwordError.classList.add('hidden');
-                    adminPasswordInput.value = '';
-                    showAdminPanel();
-                } else {
-                    passwordError.classList.remove('hidden');
-                }
-            });
-
-            closeMessageModal.addEventListener('click', hideMessageModal);
-            messageModalOk.addEventListener('click', hideMessageModal);
-
-            athleteQuestionnaireForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-
-                const formData = new FormData(athleteQuestionnaireForm);
-                const questionnaireData = {};
-                for (let [key, value] of formData.entries()) {
-                    questionnaireData[key] = value;
-                }
-
-                // Simulate sending data to Google Sheet
-                console.log(`Sending questionnaire for ${currentAthlete.name} (${currentDiscipline.name}):`, questionnaireData);
-                showMessageModal('Cuestionario Enviado', `¡Gracias! El cuestionario de ${currentAthlete.name} ha sido registrado. (Simulado)`);
-
-                // Update athlete status in Firestore
-                try {
-                    const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, currentAthlete.id);
-                    await updateDoc(athleteDocRef, { answered: true });
-                    console.log("Athlete status updated in Firestore.");
-                } catch (error) {
-                    console.error("Error updating athlete status in Firestore:", error);
-                    showMessageModal('Error', 'No se pudo actualizar el estado del atleta en la base de datos.');
-                }
-
-
-                // Go back to athletes list
-                setTimeout(() => {
-                    hideMessageModal();
-                    showAthletes(currentDiscipline.id);
-                }, 1500); // Give user time to read message
-            });
-
-            // --- Header Sticky Logic ---
-            window.addEventListener('scroll', () => {
-                if (window.scrollY > 50) { // Adjust scroll threshold as needed
-                    header.classList.add('scrolled');
-                } else {
-                    header.classList.remove('scrolled');
-                }
-            });
-
-            // --- Carousel Background Logic ---
-            const carouselImages = [
-                'https://placehold.co/1920x1080/ADD8E6/000000?text=Cancha+1',
-                'https://placehold.co/1920x1080/B0C4DE/000000?text=Cancha+2',
-                'https://placehold.co/1920x1080/C6E2FF/000000?text=Cancha+3'
-            ];
-            let currentImageIndex = 0;
-
-            function changeCarouselImage() {
-                carouselBackground.style.backgroundImage = `url('${carouselImages[currentImageIndex]}')`;
-                currentImageIndex = (currentImageIndex + 1) % carouselImages.length;
+        },
+        cancelarFormulario() {
+          this.mostrarFormulario = false;
+          this.respuestas = { rendimiento: "", lesion: "", objetivos: "" };
+        },
+        verificarClave() {
+          if (this.claveAdmin === "7#pL9@xQ$2!zMnB&") {
+            this.adminAutenticado = true;
+          } else {
+            alert("Contraseña incorrecta");
+          }
+        },
+        agregarDisciplina() {
+          if (this.nuevaDisciplina.trim() === "") return;
+          this.disciplinas.push({ nombre: this.nuevaDisciplina.trim(), atletas: [] });
+          this.nuevaDisciplina = "";
+        },
+        eliminarDisciplina(index) {
+          if (confirm("¿Seguro que quieres eliminar esta disciplina?")) {
+            const nombreEliminado = this.disciplinas[index].nombre;
+            this.disciplinas.splice(index, 1);
+            if (this.disciplinaActiva === nombreEliminado) {
+              this.disciplinaActiva = "";
             }
-
-            // Change image every 5 seconds
-            setInterval(changeCarouselImage, 5000);
-            changeCarouselImage(); // Set initial image
-
-            // --- Admin Panel Logic ---
-            const disciplineNameInput = document.getElementById('discipline-name-input');
-            const addDisciplineButton = document.getElementById('add-discipline-button');
-            const adminDisciplinesList = document.getElementById('admin-disciplines-list');
-            const adminSelectDiscipline = document.getElementById('admin-select-discipline');
-            const athleteNameInput = document.getElementById('athlete-name-input');
-            const addAthleteButton = document.getElementById('add-athlete-button');
-            const adminAthletesList = document.getElementById('admin-athletes-list');
-
-            function renderAdminDisciplines() {
-                adminDisciplinesList.innerHTML = '';
-                appData.disciplines.forEach((discipline) => {
-                    const div = document.createElement('div');
-                    div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded-md shadow-sm';
-                    div.innerHTML = `
-                        <span class="text-gray-800">${discipline.name}</span>
-                        <div>
-                            <button data-id="${discipline.id}" class="edit-discipline-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
-                            <button data-id="${discipline.id}" class="delete-discipline-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
-                        </div>
-                    `;
-                    adminDisciplinesList.appendChild(div);
-                });
-                addAdminDisciplineListeners();
+          }
+        },
+        agregarAtleta(disciplina) {
+          const nombre = (this.nuevoAtletaPorDisciplina[disciplina] || "").trim();
+          if (!nombre) return;
+          const club = this.disciplinas.find((c) => c.nombre === disciplina);
+          if (club && !club.atletas.some((a) => a.nombre === nombre)) {
+            club.atletas.push({ nombre, respondido: false });
+            this.nuevoAtletaPorDisciplina[disciplina] = "";
+          }
+        },
+        eliminarAtleta(disciplina, index) {
+          const club = this.disciplinas.find((c) => c.nombre === disciplina);
+          if (club) {
+            if (confirm("¿Seguro que quieres eliminar este atleta?")) {
+              club.atletas.splice(index, 1);
             }
+          }
+        },
+        cerrarAdmin() {
+          this.adminVisible = false;
+          this.adminAutenticado = false;
+          this.claveAdmin = "";
+        },
+      };
+    }
+  </script>
 
-            function addAdminDisciplineListeners() {
-                document.querySelectorAll('.edit-discipline-btn').forEach(button => {
-                    button.onclick = async (e) => {
-                        const disciplineId = e.target.dataset.id;
-                        const discipline = appData.disciplines.find(d => d.id === disciplineId);
-                        if (!discipline) return;
-
-                        const newName = await showPromptModal('Editar Disciplina', 'Introduce el nuevo nombre para la disciplina:', discipline.name);
-                        if (newName && newName.trim() !== '') {
-                            try {
-                                const docRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines`, disciplineId);
-                                await updateDoc(docRef, { name: newName.trim() });
-                                showMessageModal('Éxito', 'Disciplina actualizada correctamente.');
-                            } catch (error) {
-                                console.error("Error updating discipline:", error);
-                                showMessageModal('Error', 'No se pudo actualizar la disciplina.');
-                            }
-                        }
-                    };
-                });
-                document.querySelectorAll('.delete-discipline-btn').forEach(button => {
-                    button.onclick = async (e) => {
-                        const disciplineId = e.target.dataset.id;
-                        const discipline = appData.disciplines.find(d => d.id === disciplineId);
-                        if (!discipline) return;
-
-                        const confirmed = await showConfirmModal('Confirmar Eliminación', `¿Estás seguro de que quieres eliminar la disciplina "${discipline.name}" y todos sus atletas?`);
-                        if (confirmed) {
-                            try {
-                                // Delete athletes subcollection first
-                                const athletesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${disciplineId}/athletes`);
-                                const athletesSnapshot = await getDocs(athletesColRef);
-                                const deleteAthletePromises = athletesSnapshot.docs.map(athleteDoc => deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/disciplines/${disciplineId}/athletes`, athleteDoc.id)));
-                                await Promise.all(deleteAthletePromises);
-
-                                // Then delete the discipline document
-                                const docRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines`, disciplineId);
-                                await deleteDoc(docRef);
-                                showMessageModal('Éxito', 'Disciplina eliminada correctamente.');
-                            } catch (error) {
-                                console.error("Error deleting discipline:", error);
-                                showMessageModal('Error', 'No se pudo eliminar la disciplina.');
-                            }
-                        }
-                    };
-                });
-            }
-
-            addDisciplineButton.addEventListener('click', async () => {
-                const name = disciplineNameInput.value.trim();
-                if (name) {
-                    if (!appData.disciplines.some(d => d.name === name)) {
-                        try {
-                            const disciplinesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines`);
-                            await addDoc(disciplinesColRef, { name: name });
-                            disciplineNameInput.value = '';
-                            showMessageModal('Éxito', 'Disciplina agregada correctamente.');
-                        } catch (error) {
-                            console.error("Error adding discipline:", error);
-                            showMessageModal('Error', 'No se pudo agregar la disciplina.');
-                        }
-                    } else {
-                        showMessageModal('Error', 'La disciplina ya existe.');
-                    }
-                } else {
-                    showMessageModal('Error', 'El nombre de la disciplina no puede estar vacío.');
-                }
-            });
-
-            function populateAdminDisciplineSelect() {
-                adminSelectDiscipline.innerHTML = '<option value="">Selecciona una disciplina</option>';
-                appData.disciplines.forEach(discipline => {
-                    const option = document.createElement('option');
-                    option.value = discipline.id; // Use discipline ID as value
-                    option.textContent = discipline.name;
-                    adminSelectDiscipline.appendChild(option);
-                });
-                // Set the current discipline in the select if it's still valid
-                if (currentDiscipline && appData.disciplines.some(d => d.id === currentDiscipline.id)) {
-                    adminSelectDiscipline.value = currentDiscipline.id;
-                } else if (appData.disciplines.length > 0) {
-                    adminSelectDiscipline.value = appData.disciplines[0].id; // Select first by default
-                    currentDiscipline = appData.disciplines[0];
-                } else {
-                    currentDiscipline = null;
-                }
-                renderAdminAthletes(); // Re-render athletes when discipline selection changes
-            }
-
-            adminSelectDiscipline.addEventListener('change', (e) => {
-                const selectedDisciplineId = e.target.value;
-                currentDiscipline = appData.disciplines.find(d => d.id === selectedDisciplineId);
-                renderAdminAthletes();
-            });
-
-            function renderAdminAthletes() {
-                adminAthletesList.innerHTML = '';
-                if (currentDiscipline && currentDiscipline.athletes) {
-                    currentDiscipline.athletes.forEach((athlete) => {
-                        const div = document.createElement('div');
-                        div.className = 'flex items-center justify-between p-2 bg-gray-100 rounded-md shadow-sm';
-                        div.innerHTML = `
-                            <span class="text-gray-800">${athlete.name}</span>
-                            <div>
-                                <button data-id="${athlete.id}" class="edit-athlete-btn bg-blue-500 hover:bg-blue-600 text-white text-sm py-1 px-3 rounded-full mr-2">Editar</button>
-                                <button data-id="${athlete.id}" class="delete-athlete-btn bg-red-500 hover:bg-red-600 text-white text-sm py-1 px-3 rounded-full">Eliminar</button>
-                                <button data-id="${athlete.id}" class="reset-athlete-status-btn bg-yellow-500 hover:bg-yellow-600 text-white text-sm py-1 px-3 rounded-full">Resetear Estado</button>
-                            </div>
-                        `;
-                        adminAthletesList.appendChild(div);
-                    });
-                }
-                addAdminAthleteListeners();
-            }
-
-            function addAdminAthleteListeners() {
-                document.querySelectorAll('.edit-athlete-btn').forEach(button => {
-                    button.onclick = async (e) => {
-                        const athleteId = e.target.dataset.id;
-                        const athlete = currentDiscipline.athletes.find(a => a.id === athleteId);
-                        if (!athlete) return;
-
-                        const newName = await showPromptModal('Editar Atleta', 'Introduce el nuevo nombre para el atleta:', athlete.name);
-                        if (newName && newName.trim() !== '') {
-                            try {
-                                const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, athleteId);
-                                await updateDoc(athleteDocRef, { name: newName.trim() });
-                                showMessageModal('Éxito', 'Atleta actualizado correctamente.');
-                            } catch (error) {
-                                console.error("Error updating athlete:", error);
-                                showMessageModal('Error', 'No se pudo actualizar el atleta.');
-                            }
-                        }
-                    };
-                });
-                document.querySelectorAll('.delete-athlete-btn').forEach(button => {
-                    button.onclick = async (e) => {
-                        const athleteId = e.target.dataset.id;
-                        const athlete = currentDiscipline.athletes.find(a => a.id === athleteId);
-                        if (!athlete) return;
-
-                        const confirmed = await showConfirmModal('Confirmar Eliminación', `¿Estás seguro de que quieres eliminar al atleta "${athlete.name}"?`);
-                        if (confirmed) {
-                            try {
-                                const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, athleteId);
-                                await deleteDoc(athleteDocRef);
-                                showMessageModal('Éxito', 'Atleta eliminado correctamente.');
-                            } catch (error) {
-                                console.error("Error deleting athlete:", error);
-                                showMessageModal('Error', 'No se pudo eliminar el atleta.');
-                            }
-                        }
-                    };
-                });
-                document.querySelectorAll('.reset-athlete-status-btn').forEach(button => {
-                    button.onclick = async (e) => {
-                        const athleteId = e.target.dataset.id;
-                        const athlete = currentDiscipline.athletes.find(a => a.id === athleteId);
-                        if (!athlete) return;
-
-                        const confirmed = await showConfirmModal('Confirmar Reseteo', `¿Estás seguro de que quieres resetear el estado del cuestionario para "${athlete.name}"?`);
-                        if (confirmed) {
-                            try {
-                                const athleteDocRef = doc(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`, athleteId);
-                                await updateDoc(athleteDocRef, { answered: false });
-                                showMessageModal('Éxito', 'Estado del cuestionario reseteado.');
-                            } catch (error) {
-                                console.error("Error resetting athlete status:", error);
-                                showMessageModal('Error', 'No se pudo resetear el estado del atleta.');
-                            }
-                        }
-                    };
-                });
-            }
-
-            addAthleteButton.addEventListener('click', async () => {
-                const name = athleteNameInput.value.trim();
-                if (!currentDiscipline) {
-                    showMessageModal('Error', 'Por favor, selecciona una disciplina primero.');
-                    return;
-                }
-                if (name) {
-                    if (!currentDiscipline.athletes.some(a => a.name === name)) {
-                        try {
-                            const athletesColRef = collection(db, `artifacts/${appId}/users/${userId}/disciplines/${currentDiscipline.id}/athletes`);
-                            await addDoc(athletesColRef, { name: name, answered: false });
-                            athleteNameInput.value = '';
-                            showMessageModal('Éxito', 'Atleta agregado correctamente.');
-                        } catch (error) {
-                            console.error("Error adding athlete:", error);
-                            showMessageModal('Error', 'No se pudo agregar el atleta.');
-                        }
-                    } else {
-                        showMessageModal('Error', 'El atleta ya existe en esta disciplina.');
-                    }
-                } else {
-                    showMessageModal('Error', 'El nombre del atleta no puede estar vacío.');
-                }
-            });
-
-            // Initial load is now handled by onAuthStateChanged
-        });
-    </script>
 </body>
 </html>
