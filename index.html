@@ -7,22 +7,15 @@
 <!-- Tailwind CSS + Inter font (Tailwind ya incluye Inter como fuente por defecto) -->
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  /* Fondo dinámico con opacidad y degradado */
+  /* Fondo dinámico con opacidad 1 (total visible) y transición suave */
   #carousel {
     position: fixed;
     inset: 0;
     z-index: -10;
     background-size: cover;
     background-position: center;
-    opacity: 0.2;
+    opacity: 1;
     transition: background-image 1s ease-in-out;
-  }
-  #overlay {
-    position: fixed;
-    inset: 0;
-    z-index: -5;
-    background: linear-gradient(to bottom right, #ebf8ff, #bee3f8);
-    opacity: 0.8;
   }
 </style>
 </head>
@@ -35,7 +28,6 @@
 </header>
 
 <div id="carousel"></div>
-<div id="overlay"></div>
 
 <main class="flex flex-col items-center justify-center px-4 py-8 max-w-4xl mx-auto min-h-[calc(100vh-88px)]">
   <section class="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
