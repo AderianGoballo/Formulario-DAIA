@@ -1,98 +1,108 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cuestionario de Seguimiento</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #edf2f7;
-      padding: 2rem;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    form {
-      max-width: 600px;
-      margin: auto;
-      background: white;
-      padding: 2rem;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 1rem;
-      font-weight: bold;
-    }
-    input, textarea {
-      width: 100%;
-      padding: 0.75rem;
-      margin-top: 0.5rem;
-      border: 1px solid #cbd5e0;
-      border-radius: 4px;
-    }
-    button {
-      margin-top: 2rem;
-      background: #2c5282;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-    button:hover {
-      background: #1a365d;
-    }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-  <h2 id="titulo">Seguimiento del Atleta</h2>
-  <form id="formulario">
-    <input type="hidden" id="atleta" name="atleta">
-    <input type="hidden" id="disciplina" name="disciplina">
 
-    <label for="estadoFisico">Estado físico actual:</label>
-    <textarea id="estadoFisico" name="estadoFisico" required></textarea>
+  <div id="layout-wrapper"></div>
 
-    <label for="progreso">Progreso semanal:</label>
-    <textarea id="progreso" name="progreso" required></textarea>
+  <main class="contenedor-blanco max-w-3xl mx-auto">
+    <h2 id="titulo" class="text-3xl font-bold text-blue-800 text-center mb-8">Seguimiento del Atleta</h2>
+    <form id="formulario" class="bg-white p-8 rounded-xl shadow-xl border border-blue-100">
+      <input type="hidden" id="atleta" name="atleta" />
+      <input type="hidden" id="disciplina" name="disciplina" />
 
-    <label for="objetivos">Objetivos próximos:</label>
-    <textarea id="objetivos" name="objetivos" required></textarea>
+      <label for="estadoFisico" class="block mt-4 font-semibold text-blue-700">Estado físico actual:</label>
+      <textarea id="estadoFisico" name="estadoFisico" required class="w-full p-4 mt-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
 
-    <button type="submit">Enviar</button>
-  </form>
+      <label for="progreso" class="block mt-4 font-semibold text-blue-700">Progreso semanal:</label>
+      <textarea id="progreso" name="progreso" required class="w-full p-4 mt-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+
+      <label for="objetivos" class="block mt-4 font-semibold text-blue-700">Objetivos próximos:</label>
+      <textarea id="objetivos" name="objetivos" required class="w-full p-4 mt-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+
+      <button type="submit" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+        Enviar
+      </button>
+    </form>
+
+    <button id="btnVolver" class="mt-8 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-6 rounded-lg shadow-md transition w-full max-w-xs mx-auto">
+      Volver
+    </button>
+  </main>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const atleta = urlParams.get('nombre');
-    const disciplina = urlParams.get('disciplina');
-    document.getElementById('atleta').value = atleta;
-    document.getElementById('disciplina').value = disciplina;
-    document.getElementById('titulo').textContent = `Seguimiento de ${atleta}`;
-
     const scriptURL = 'https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec';
 
-    document.getElementById('formulario').addEventListener('submit', e => {
-      e.preventDefault();
-      const formData = new FormData(document.getElementById('formulario'));
-      const data = {};
-      formData.forEach((value, key) => data[key] = value);
+    async function loadLayout() {
+      const res = await fetch('layout.html');
+      if (!res.ok) throw new Error('No se pudo cargar layout.html');
+      const html = await res.text();
+      document.getElementById('layout-wrapper').innerHTML = html;
+      document.getElementById('logoDAIA').addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
+    }
 
-      fetch(scriptURL, {
-        method: 'POST',
-        body: JSON.stringify({ tipo: 'respuesta', ...data })
-      })
-      .then(() => {
-        alert('Formulario enviado exitosamente');
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('btnVolver').addEventListener('click', () => {
         window.history.back();
-      })
-      .catch(() => alert('Error al enviar el formulario'));
+      });
     });
+
+    (async () => {
+      await loadLayout();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const atleta = urlParams.get('nombre');
+      const disciplina = urlParams.get('disciplina');
+
+      document.getElementById('atleta').value = atleta || '';
+      document.getElementById('disciplina').value = disciplina || '';
+      document.getElementById('titulo').textContent = `Seguimiento de ${atleta || 'Atleta'}`;
+
+      document.getElementById('formulario').addEventListener('submit', async e => {
+        e.preventDefault();
+
+        const formData = new FormData(document.getElementById('formulario'));
+        const data = {};
+        formData.forEach((value, key) => data[key] = value);
+
+        const payload = {
+          tipo: 'respuesta',
+          ...data
+        };
+
+        try {
+          const res = await fetch(scriptURL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+
+          const result = await res.json();
+
+          if (result.status === 'ok') {
+            alert('Formulario enviado exitosamente.');
+
+            // Marcar como respondido en localStorage (puedes quitar esto si solo usas backend)
+            const respondedKey = `respondido_${atleta}_${disciplina}`;
+            localStorage.setItem(respondedKey, 'true');
+
+            window.history.back(); // vuelve a atletas.html
+          } else {
+            alert('Error: ' + result.message);
+          }
+        } catch (error) {
+          alert('Error al enviar el formulario.');
+          console.error(error);
+        }
+      });
+    })();
   </script>
+
 </body>
 </html>
