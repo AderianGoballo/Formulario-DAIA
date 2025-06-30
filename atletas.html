@@ -1,76 +1,82 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Atletas por Disciplina</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #eef2f5;
-      padding: 2rem;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 2rem;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-    }
-    button {
-      background: #2c5282;
-      color: white;
-      border: none;
-      padding: 1rem;
-      font-size: 1rem;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background: #1a365d;
-    }
-    .volver {
-      display: block;
-      margin: 2rem auto;
-      text-align: center;
-      background: #718096;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border-radius: 4px;
-      text-decoration: none;
-      width: fit-content;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Atletas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-  <h2 id="titulo-disciplina">Atletas</h2>
-  <div id="contenedor-atletas" class="grid"></div>
-  <a href="index.html" class="volver">⬅ Volver</a>
+
+  <div id="layout-wrapper"></div>
+
+  <main class="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-xl border border-blue-200 text-center">
+    <h1 id="tituloDisciplina" class="text-4xl font-bold mb-8 inline-block bg-white px-4 py-2 rounded-lg shadow">Atletas</h1>
+    <div id="atletas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    <button id="btnVolver" class="mt-8 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-lg shadow-md transition">Volver</button>
+  </main>
 
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const idDisciplina = urlParams.get('id');
-    const nombreDisciplina = urlParams.get('disciplina');
-    const contenedor = document.getElementById('contenedor-atletas');
-    document.getElementById('titulo-disciplina').textContent = `Atletas de ${nombreDisciplina}`;
-
-    fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec')
-      .then(res => res.json())
-      .then(data => {
-        const disciplina = data.disciplinas.find(d => d.id == idDisciplina);
-        if (!disciplina) return;
-        disciplina.atletas.forEach(nombre => {
-          const btn = document.createElement('button');
-          btn.textContent = nombre;
-          btn.onclick = () => {
-            window.location.href = `cuestionario.html?nombre=${encodeURIComponent(nombre)}&disciplina=${encodeURIComponent(nombreDisciplina)}`;
-          };
-          contenedor.appendChild(btn);
-        });
+    async function loadLayout() {
+      const res = await fetch('layout.html');
+      if (!res.ok) throw new Error('No se pudo cargar layout.html');
+      const html = await res.text();
+      document.getElementById('layout-wrapper').innerHTML = html;
+      document.getElementById('logoDAIA').addEventListener('click', () => {
+        window.location.href = 'index.html';
       });
+    }
+
+    async function cargarAtletas() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const disciplinaId = urlParams.get('disciplinaId');
+      const disciplinaNombre = urlParams.get('disciplinaNombre');
+      document.getElementById('tituloDisciplina').textContent = disciplinaNombre || 'Atletas';
+
+      try {
+        const res = await fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec?tipo=get');
+        const data = await res.json();
+
+        const cont = document.getElementById('atletas');
+        cont.innerHTML = '';
+
+        const disciplina = data.disciplinas.find(d => d.id == disciplinaId);
+        if (!disciplina) {
+          cont.textContent = 'Disciplina no encontrada';
+          return;
+        }
+
+        disciplina.atletas.forEach(a => {
+          const btn = document.createElement('button');
+          btn.textContent = a.respondido ? `${a.nombre} ✓ Respondido` : a.nombre;
+          btn.className = a.respondido
+            ? 'bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md cursor-default opacity-70'
+            : 'bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md cursor-pointer';
+
+          if (!a.respondido) {
+            btn.addEventListener('click', () => {
+              window.location.href = `cuestionario.html?nombre=${encodeURIComponent(a.nombre)}&disciplina=${encodeURIComponent(disciplina.nombre)}`;
+            });
+          } else {
+            btn.disabled = true;
+          }
+          cont.appendChild(btn);
+        });
+
+      } catch (e) {
+        alert('Error cargando atletas');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadLayout();
+      await cargarAtletas();
+
+      document.getElementById('btnVolver').addEventListener('click', () => {
+        window.history.back();
+      });
+    });
   </script>
+
 </body>
 </html>
