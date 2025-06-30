@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seguimiento de Atletas Artículo 25</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+      background: transparent;
+    }
+    #background-carousel {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: -1;
+      overflow: hidden;
+    }
+    #background-carousel img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: blur(8px);
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+    #background-carousel img.active {
+      opacity: 1;
+    }
+
+    .header-fixed {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+<body x-data="app()" x-init="startCarousel()">
+  <div id="background-carousel" aria-hidden="true">
+    <template x-for="(img, i) in carrusel" :key="i">
+      <img :src="img" :class="{ 'active': i === currentImage }" />
+    </template>
+  </div>
+
+  <header
+    class="header-fixed py-4 px-6 flex justify-between items-center"
+    aria-label="Cabecera principal"
+  >
+    <img
+      src="http://www.ucv.ve/typo3temp/pics/b74500906e.gif"
+      alt="Logo DAIA"
+      class="w-12 h-12 rounded-full"
+    />
+    <h1 class="text-xl font-bold text-gray-700">
+      Seguimiento de Atletas Artículo 25
+    </h1>
+    <img
+      src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Logo_Universidad_Central_de_Venezuela.svg/960px-Logo_Universidad_Central_de_Venezuela.svg.png"
+      alt="Logo UCV"
+      class="w-12 h-12 rounded-full object-contain"
+    />
+  </header>
+
+  <main class="p-4 relative z-10" aria-label="Contenido principal">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <template x-for="(club, index) in disciplinas" :key="index">
+        <div
+          class="bg-white bg-opacity-90 shadow rounded-lg p-4"
+          :aria-expanded="disciplinaActiva === club.nombre ? 'true' : 'false'"
+          :aria-controls="'atletas-' + index"
+        >
+          <h2
+            class="text-lg font-semibold mb-2 cursor-pointer text-blue-700 hover:underline"
+            @click="mostrarAtletas(club.nombre)"
+            role="button"
+            tabindex="0"
+            @keydown.enter="mostrarAtletas(club.nombre)"
+            @keydown.space.prevent="mostrarAtletas(club.nombre)"
+          >
+            <span x-text="club.nombre"></span>
+          </h2>
+
+          <template x-if="disciplinaActiva === club.nombre">
+            <ul
+              :id="'atletas-' + index"
+              class="mb-4"
+              aria-label="Lista de atletas"
+            >
+              <template x-for="(atleta, aIndex) in club.atletas" :key="aIndex">
+                <li>
+                  <button
+                    class="w-full text-left px-4 py-2 rounded mb-1"
+                    :class="atleta.respondido ? 'bg-green-200' : 'bg-red-200'"
+                    @click="mostrarCuestionario(club.nombre, atleta.nombre)"
+                  >
+                    <span x-text="atleta.nombre"></span>
+                  </button>
+                  <template x-if="adminAutenticado">
+                    <button
+                      @click="eliminarAtleta(club.nombre, aIndex)"
+                      class="ml-2 px-2 py-1 text-red-600 hover:text-red-800"
+                      aria-label="Eliminar atleta"
+                      title="Eliminar atleta"
+                    >
+                      &times;
+                    </button>
+                  </template>
+                </li>
+              </template>
+            </ul>
+            <template x-if="adminAutenticado">
+              <div class="flex items-center mb-4">
+                <input
+                  type="text"
+                  x-model="nuevoAtletaPorDisciplina[club.nombre]"
+                  :placeholder="'Agregar atleta en ' + club.nombre"
+                  class="flex-grow border rounded px-3 py-1"
+                  @keydown.enter.prevent="agregarAtleta(club.nombre)"
+                  aria-label="Nombre del nuevo atleta"
+                />
+                <button
+                  @click="agregarAtleta(club.nombre)"
+                  class="ml-2 px-3 py-1 bg-green-500 text-white rounded"
+                  aria-label="Agregar atleta"
+                >
+                  +
+                </button>
+              </div>
+            </template>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <div
+      x-show="mostrarFormulario"
+      class="mt-8 bg-white bg-opacity-90 p-6 shadow rounded"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="form-title"
+      tabindex="-1"
+    >
+      <h3 id="form-title" class="text-xl font-semibold mb-4">
+        Cuestionario de Seguimiento: <span x-text="atletaActual"></span>
+      </h3>
+      <form @submit.prevent="enviarFormulario">
+        <label class="block mb-2" for="rendimiento">
+          ¿Cómo ha sido tu rendimiento esta semana?
+          <textarea
+            id="rendimiento"
+            x-model="respuestas.rendimiento"
+            class="w-full border p-2 rounded"
+            required
+          ></textarea>
+        </label>
+        <label class="block mb-2" for="lesion">
+          ¿Tienes alguna lesión o molestia?
+          <textarea
+            id="lesion"
+            x-model="respuestas.lesion"
+            class="w-full border p-2 rounded"
+            required
+          ></textarea>
+        </label>
+        <label class="block mb-2" for="objetivos">
+          ¿Qué objetivos tienes para la próxima semana?
+          <textarea
+            id="objetivos"
+            x-model="respuestas.objetivos"
+            class="w-full border p-2 rounded"
+            required
+          ></textarea>
+        </label>
+        <button
+          type="submit"
+          class="mt-4 px-4 py-2 bg-blue-500 text-white rounded"
+        >
+          Enviar
+        </button>
+        <button
+          type="button"
+          @click="cancelarFormulario"
+          class="mt-4 ml-2 px-4 py-2 bg-gray-400 text-white rounded"
+        >
+          Cancelar
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <footer
+    class="mt-10 p-4 text-center text-sm text-gray-500 relative z-10"
+    aria-label="Pie de página con acceso administrador"
+  >
+    <button
+      @click="adminVisible = true"
+      class="underline text-blue-600"
+      aria-haspopup="dialog"
+      aria-controls="admin-panel"
+    >
+      Administrador
+    </button>
+  </footer>
+
+  <div
+    x-show="adminVisible"
+    id="admin-panel"
+    class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50"
+    role="dialog"
+    aria-modal="true"
+    tabindex="-1"
+  >
+    <div class="bg-white p-6 rounded shadow w-full max-w-lg max-h-[80vh] overflow-auto">
+      <template x-if="!adminAutenticado">
+        <div>
+          <h2 class="text-lg font-semibold mb-2">Acceso Administrador</h2>
+          <input
+            type="password"
+            placeholder="Contraseña"
+            x-model="claveAdmin"
+            class="w-full border p-2 rounded mb-4"
+            aria-label="Contraseña administrador"
+          />
+          <button
+            @click="verificarClave"
+            class="px-4 py-2 bg-blue-600 text-white rounded"
+          >
+            Entrar
+          </button>
+        </div>
+      </template>
+      <template x-if="adminAutenticado">
+        <div>
+          <h2 class="text-lg font-semibold mb-4">Panel de Administración</h2>
+          <div class="mb-4">
+            <label class="block mb-1" for="nueva-disciplina"
+              >Nueva Disciplina:</label
+            >
+            <input
+              id="nueva-disciplina"
+              x-model="nuevaDisciplina"
+              class="w-full border rounded p-2"
+              placeholder="Nombre de la disciplina"
+              @keydown.enter.prevent="agregarDisciplina"
+              aria-label="Nombre nueva disciplina"
+            />
+            <button
+              @click="agregarDisciplina"
+              class="mt-2 px-3 py-1 bg-green-500 text-white rounded"
+            >
+              Agregar
+            </button>
+          </div>
+          <div
+            class="max-h-72 overflow-auto border p-2 rounded"
+            aria-label="Lista de disciplinas y atletas"
+          >
+            <template x-for="(club, cIndex) in disciplinas" :key="cIndex">
+              <div class="mb-4 border-b pb-2">
+                <div class="flex justify-between items-center">
+                  <span class="font-bold text-lg" x-text="club.nombre"></span>
+                  <button
+                    @click="eliminarDisciplina(cIndex)"
+                    class="ml-2 text-red-500 hover:text-red-700"
+                    aria-label="Eliminar disciplina"
+                    title="Eliminar disciplina"
+                  >
+                    &times;
+                  </button>
+                </div>
+                <ul class="mt-2">
+                  <template
+                    x-for="(atleta, aIndex) in club.atletas"
+                    :key="aIndex"
+                  >
+                    <li class="flex justify-between items-center py-1">
+                      <span x-text="atleta.nombre"></span>
+                      <button
+                        @click="eliminarAtleta(club.nombre, aIndex)"
+                        class="text-red-600 hover:text-red-800"
+                        aria-label="Eliminar atleta"
+                        title="Eliminar atleta"
+                      >
+                        &times;
+                      </button>
+                    </li>
+                  </template>
+                </ul>
+                <div class="flex items-center mt-2">
+                  <input
+                    type="text"
+                    x-model="nuevoAtletaPorDisciplina[club.nombre]"
+                    :placeholder="'Agregar atleta a ' + club.nombre"
+                    class="flex-grow border rounded px-3 py-1"
+                    @keydown.enter.prevent="agregarAtleta(club.nombre)"
+                    aria-label="Nombre nuevo atleta"
+                  />
+                  <button
+                    @click="agregarAtleta(club.nombre)"
+                    class="ml-2 px-3 py-1 bg-green-500 text-white rounded"
+                    aria-label="Agregar atleta"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+          <button
+            @click="cerrarAdmin"
+            class="mt-4 px-4 py-2 bg-gray-400 text-white rounded"
+          >
+            Cerrar
+          </button>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <script>
+    function app() {
+      return {
+        disciplinas: [
+          { nombre: "Club de Ajedrez", atletas: [{ nombre: "Juan Pérez", respondido: false }] },
+          { nombre: "Club de Atletismo", atletas: [{ nombre: "Ana Torres", respondido: false }] },
+          { nombre: "Club de Baloncesto", atletas: [] },
+          { nombre: "Club de Beisbol", atletas: [] },
+          { nombre: "Club de Boxeo", atletas: [] },
+          { nombre: "Natación", atletas: [] },
+          { nombre: "Polo Acuático", atletas: [] },
+          { nombre: "Submarinismo", atletas: [] },
+          { nombre: "Club de Esgrima", atletas: [] },
+          { nombre: "Club de Excursionismo", atletas: [] },
+          { nombre: "Club de Fútbol", atletas: [] },
+          { nombre: "Club de Fútbol Sala", atletas: [] },
+          { nombre: "Club de Gimnasia Rítmica", atletas: [] },
+          { nombre: "Club de Judo", atletas: [] },
+          { nombre: "Club de Karate-Do (Shito Ryu Sosei Kay)", atletas: [] },
+          { nombre: "Club de Karate Libre", atletas: [] },
+          { nombre: "Club de Kenpo", atletas: [] },
+          { nombre: "Club de Kickingball", atletas: [] },
+          { nombre: "Club de Kung-Fu Mantis", atletas: [] },
+          { nombre: "Club de Kung-Fu Pajoj Pai", atletas: [] },
+          { nombre: "Club de Levantamiento de Pesas", atletas: [] },
+          { nombre: "Club de Lucha", atletas: [] },
+          { nombre: "Club de Rugby", atletas: [] },
+          { nombre: "Club de Salto Ornamental", atletas: [] },
+          { nombre: "Club de Softbol", atletas: [] },
+          { nombre: "Club de Taekwondo", atletas: [] },
+          { nombre: "Club de Tenis", atletas: [] },
+          { nombre: "Club de Tenis de Mesa", atletas: [] },
+          { nombre: "Club de Voleibol", atletas: [] },
+          { nombre: "Club de Voleibol Arena", atletas: [] },
+          { nombre: "Club de Yoga", atletas: [] },
+        ],
+        disciplinaActiva: "",
+        atletaActual: "",
+        respuestas: { rendimiento: "", lesion: "", objetivos: "" },
+        mostrarFormulario: false,
+        adminVisible: false,
+        adminAutenticado: false,
+        claveAdmin: "",
+        nuevaDisciplina: "",
+        nuevoAtletaPorDisciplina: {},
+
+        carrusel: [
+          "https://i0.wp.com/ultimasnoticias.com.ve/wp-content/uploads/2024/06/IMG_4144-scaled.jpg?resize=696%2C464&ssl=1",
+          "https://www.astsports.com/wp-content/uploads/2018/05/lp17_1-2.jpg",
+          "https://alzirarugby.club/wp-content/uploads/2020/06/Alzira-25-UCV-71-2019-04-06-e1592818789196.jpg",
+        ],
+        currentImage: 0,
+        startCarousel() {
+          setInterval(() => {
+            this.currentImage = (this.currentImage + 1) % this.carrusel.length;
+          }, 2000);
+        },
+
+        mostrarAtletas(nombre) {
+          this.disciplinaActiva = this.disciplinaActiva === nombre ? "" : nombre;
+        },
+        mostrarCuestionario(disciplina, atleta) {
+          this.atletaActual = atleta;
+          this.disciplinaActiva = disciplina;
+          this.mostrarFormulario = true;
+          this.respuestas = { rendimiento: "", lesion: "", objetivos: "" };
+        },
+        enviarFormulario() {
+          const payload = {
+            atleta: this.atletaActual,
+            disciplina: this.disciplinaActiva,
+            rendimiento: this.respuestas.rendimiento,
+            lesion: this.respuestas.lesion,
+            objetivos: this.respuestas.objetivos,
+          };
+
+          fetch(
+            "https://script.google.com/macros/s/AKfycbybMauVy1_rVK7yRRQQ9L0X4ZxS9cISOOSkp1oJ-1xtmyEPBBhYTx9NnNHKQPgWH1A/exec",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            }
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.status === "ok") {
+                const club = this.disciplinas.find(
+                  (c) => c.nombre === this.disciplinaActiva
+                );
+                const atleta = club.atletas.find(
+                  (a) => a.nombre === this.atletaActual
+                );
+                atleta.respondido = true;
+                this.mostrarFormulario = false;
+                this.respuestas = { rendimiento: "", lesion: "", objetivos: "" };
+              } else {
+                alert("Hubo un error al enviar los datos: " + data.message);
+              }
+            })
+            .catch((error) => {
+              alert("Error de red o del servidor: " + error.message);
+            });
+        },
+        cancelarFormulario() {
+          this.mostrarFormulario = false;
+          this.respuestas = { rendimiento: "", lesion: "", objetivos: "" };
+        },
+        verificarClave() {
+          if (this.claveAdmin === "7#pL9@xQ$2!zMnB&") {
+            this.adminAutenticado = true;
+          } else {
+            alert("Contraseña incorrecta");
+          }
+        },
+        agregarDisciplina() {
+          if (this.nuevaDisciplina.trim() === "") return;
+          this.disciplinas.push({ nombre: this.nuevaDisciplina.trim(), atletas: [] });
+          this.nuevaDisciplina = "";
+        },
+        eliminarDisciplina(index) {
+          if (confirm("¿Seguro que quieres eliminar esta disciplina?")) {
+            const nombreEliminado = this.disciplinas[index].nombre;
+            this.disciplinas.splice(index, 1);
+            if (this.disciplinaActiva === nombreEliminado) {
+              this.disciplinaActiva = "";
+            }
+          }
+        },
+        agregarAtleta(disciplina) {
+          const nombre = (this.nuevoAtletaPorDisciplina[disciplina] || "").trim();
+          if (!nombre) return;
+          const club = this.disciplinas.find((c) => c.nombre === disciplina);
+          if (club && !club.atletas.some((a) => a.nombre === nombre)) {
+            club.atletas.push({ nombre, respondido: false });
+            this.nuevoAtletaPorDisciplina[disciplina] = "";
+          }
+        },
+        eliminarAtleta(disciplina, index) {
+          const club = this.disciplinas.find((c) => c.nombre === disciplina);
+          if (club) {
+            if (confirm("¿Seguro que quieres eliminar este atleta?")) {
+              club.atletas.splice(index, 1);
+            }
+          }
+        },
+        cerrarAdmin() {
+          this.adminVisible = false;
+          this.adminAutenticado = false;
+          this.claveAdmin = "";
+        },
+      };
+    }
+  </script>
+</body>
+</html>
