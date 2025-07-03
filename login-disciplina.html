@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Disciplinas Deportivas</title>
+  <title>Acceso Disciplina</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -29,19 +29,21 @@
       position: relative;
     }
     
-    .sport-card {
+    .login-card {
       transition: all 0.3s ease;
       border-radius: 12px;
       overflow: hidden;
       position: relative;
+      background: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
     
-    .sport-card:hover {
+    .login-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 10px 25px rgba(30, 64, 175, 0.2);
     }
     
-    .sport-card::before {
+    .login-card::before {
       content: '';
       position: absolute;
       top: 0;
@@ -98,6 +100,46 @@
       padding: 10px;
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    
+    .logo:hover {
+      transform: scale(1.05);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(to right, #3B82F6, #1E40AF);
+      color: white;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(to right, #2563EB, #1E3A8A);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #D1D5DB;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
     }
     
     @media (max-width: 768px) {
@@ -119,12 +161,12 @@
   <header class="hero-section">
     <div class="container mx-auto px-6 py-12 text-center">
       <div class="logo-container">
-        <img src="https://i.imgur.com/Jf5iZVN.png" alt="Logo DAIA" class="logo">
-        <img src="https://i.imgur.com/9pDmTb3.png" alt="Logo UCV" class="logo">
+        <img src="https://i.imgur.com/Jf5iZVN.png" alt="Logo DAIA" class="logo" onclick="window.location.href='index.html'">
+        <img src="https://i.imgur.com/9pDmTb3.png" alt="Logo UCV" class="logo" onclick="window.location.href='index.html'">
       </div>
       <div class="max-w-3xl mx-auto">
         <h1 class="text-4xl md:text-5xl font-bold mb-6">
-          <i class="fas fa-trophy mr-3"></i>Seguimiento de Atletas
+          <i class="fas fa-lock mr-3"></i>Acceso a Disciplina
         </h1>
         <p class="text-xl text-blue-100 mb-8">
           Sistema integral para el monitoreo y evaluación de deportistas universitarios
@@ -139,44 +181,34 @@
       <div class="carousel-item active" style="background-image: url('https://images.unsplash.com/photo-1547347298-4074fc3086f0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
       <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
       <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1517649763962-0c623066013b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
-      <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
     </div>
   </div>
 
   <!-- Contenido Principal -->
   <main class="flex-grow container mx-auto px-6 py-12">
-    <div class="max-w-4xl mx-auto text-center mb-12">
-      <h2 class="text-3xl font-bold text-gray-800 mb-4">
-        <i class="fas fa-running mr-3 text-blue-600"></i>Disciplinas Disponibles
-      </h2>
-      <p class="text-lg text-gray-600">
-        Seleccione una disciplina para comenzar el proceso de evaluación
-      </p>
-    </div>
-
-    <div id="contenedorDisciplinas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-      <!-- Esqueleto de carga -->
-      <div class="col-span-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        ${Array(6).fill().map(() => `
-          <div class="sport-card bg-white shadow-md animate-pulse">
-            <div class="p-6 text-center">
-              <div class="h-12 w-12 mx-auto mb-4 bg-gray-200 rounded-full"></div>
-              <div class="h-6 w-3/4 mx-auto mb-3 bg-gray-200 rounded"></div>
-              <div class="h-10 w-32 mx-auto bg-gray-200 rounded-full"></div>
-            </div>
-          </div>
-        `).join('')}
+    <div class="login-card max-w-md mx-auto p-8">
+      <div class="text-center mb-6">
+        <i class="fas fa-running text-5xl text-blue-600 mb-4"></i>
+        <h2 id="nombreDisciplina" class="text-2xl font-bold text-blue-800">Acceso a Disciplina</h2>
+        <p class="text-gray-600 mt-2">Ingrese la clave de acceso</p>
       </div>
-    </div>
-
-    <div class="text-center mt-8">
-      <button id="btnAdmin" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-        <i class="fas fa-user-shield mr-2"></i>Acceso Administrador
+      
+      <div class="form-group">
+        <label for="claveDisciplina" class="block text-gray-700 mb-2 font-medium">Clave:</label>
+        <input type="password" id="claveDisciplina" class="form-input">
+      </div>
+      
+      <button id="btnAcceder" class="btn-primary w-full py-3">
+        <i class="fas fa-sign-in-alt mr-2"></i> Acceder
       </button>
+      
+      <p class="text-center mt-6 text-gray-600">
+        <a href="index.html" class="text-blue-600 hover:underline">Volver a disciplinas</a>
+      </p>
     </div>
   </main>
 
-  <!-- Footer Mejorado -->
+  <!-- Footer -->
   <footer class="text-white py-12">
     <div class="container mx-auto px-6">
       <div class="flex flex-col md:flex-row justify-between items-center">
@@ -219,35 +251,28 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Carrusel automático mejorado
+      // Inicializar carrusel
       class Carousel {
         constructor(container) {
           this.container = container;
           this.items = Array.from(container.querySelectorAll('.carousel-item'));
           this.currentIndex = 0;
           this.interval = null;
-          this.duration = 5000; // 5 segundos
+          this.duration = 5000;
           
           this.init();
         }
         
         init() {
-          // Mostrar primera imagen
           this.showItem(this.currentIndex);
-          
-          // Iniciar rotación automática
           this.startAutoRotation();
           
-          // Pausar al hacer hover
           this.container.addEventListener('mouseenter', () => this.stopAutoRotation());
           this.container.addEventListener('mouseleave', () => this.startAutoRotation());
         }
         
         showItem(index) {
-          // Ocultar todos los items
           this.items.forEach(item => item.classList.remove('active'));
-          
-          // Mostrar item actual
           this.items[index].classList.add('active');
         }
         
@@ -265,104 +290,42 @@
         }
       }
       
-      // Inicializar carrusel
-      const carousel = new Carousel(document.querySelector('.carousel'));
+      new Carousel(document.querySelector('.carousel'));
       
-      // Cargar disciplinas
-      cargarDisciplinas();
+      // Configurar parámetros de la disciplina
+      const params = new URLSearchParams(window.location.search);
+      const disciplinaId = params.get('disciplinaId');
+      const disciplinaNombre = params.get('disciplinaNombre');
       
-      // Botón administrador
-      document.getElementById('btnAdmin').addEventListener('click', () => {
-        window.location.href = 'admin.html';
-      });
-    });
-
-    async function cargarDisciplinas() {
-      try {
-        // Verificar si hay datos en cache
-        const cacheKey = 'disciplinas_cache';
-        const cachedData = localStorage.getItem(cacheKey);
-        const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
-        const now = new Date().getTime();
+      if (disciplinaNombre) {
+        document.getElementById('nombreDisciplina').textContent = `Acceso a ${disciplinaNombre}`;
+      }
+      
+      // Configurar botón de acceso
+      document.getElementById('btnAcceder').addEventListener('click', function() {
+        const clave = document.getElementById('claveDisciplina').value.trim();
         
-        // Usar cache si es menor a 5 minutos
-        if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
-          const data = JSON.parse(cachedData);
-          mostrarDisciplinas(data.disciplinas);
+        if (!clave) {
+          alert('Por favor ingrese la clave de acceso');
           return;
         }
         
-        // Si no hay cache válido, hacer petición
-        const res = await fetch(
-          'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec?tipo=getDisciplinas&timestamp=' + Date.now()
-        );
-        const data = await res.json();
-        
-        if (data.status !== 'ok') throw new Error(data.message);
-        
-        // Guardar en cache
-        localStorage.setItem(cacheKey, JSON.stringify(data));
-        localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
-        
-        mostrarDisciplinas(data.disciplinas);
-      } catch (err) {
-        console.error(err);
-        document.getElementById('contenedorDisciplinas').innerHTML = `
-          <div class="col-span-full bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
-            <p class="font-bold">Error al cargar las disciplinas</p>
-            <p>${err.message}</p>
-            <button onclick="cargarDisciplinas()" class="mt-2 text-blue-600 hover:underline">
-              <i class="fas fa-sync-alt mr-1"></i> Reintentar
-            </button>
-          </div>
-        `;
-      }
-    }
-    
-    function mostrarDisciplinas(disciplinas) {
-      const contenedor = document.getElementById('contenedorDisciplinas');
-      contenedor.innerHTML = '';
-      
-      const iconos = [
-        'fa-football-ball', 'fa-basketball-ball', 'fa-volleyball-ball',
-        'fa-running', 'fa-swimming-pool', 'fa-table-tennis'
-      ];
-      
-      if (disciplinas.length === 0) {
-        contenedor.innerHTML = `
-          <div class="col-span-full text-center py-12">
-            <div class="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <i class="fas fa-exclamation-triangle text-3xl text-gray-400"></i>
-            </div>
-            <h3 class="text-xl font-medium text-gray-700 mb-2">No hay disciplinas registradas</h3>
-            <p class="text-gray-500">Actualmente no hay disciplinas disponibles.</p>
-          </div>
-        `;
-        return;
-      }
-      
-      disciplinas.forEach((d, index) => {
-        const card = document.createElement('div');
-        card.className = 'sport-card bg-white shadow-md';
-        card.innerHTML = `
-          <div class="p-6 text-center">
-            <div class="text-5xl mb-4 text-blue-600">
-              <i class="fas ${iconos[index % iconos.length]}"></i>
-            </div>
-            <h3 class="text-xl font-bold mb-3 text-gray-800">${d.nombre}</h3>
-            <button class="btn-disciplina bg-gradient-to-r from-blue-500 to-blue-700 text-white font-medium py-2 px-6 rounded-full hover:from-blue-600 hover:to-blue-800 transition-all">
-              Seleccionar
-            </button>
-          </div>
-        `;
-        
-        card.querySelector('.btn-disciplina').addEventListener('click', () => {
-          window.location.href = `login-disciplina.html?disciplinaId=${d.id}&disciplinaNombre=${encodeURIComponent(d.nombre)}`;
-        });
-        
-        contenedor.appendChild(card);
+        fetch(`https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec?tipo=verificarAccesoDisciplina&disciplinaId=${disciplinaId}&clave=${encodeURIComponent(clave)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'ok') {
+              sessionStorage.setItem(`disciplina_${disciplinaId}_access`, 'true');
+              window.location.href = `atletas.html?disciplinaId=${disciplinaId}&disciplinaNombre=${encodeURIComponent(disciplinaNombre || data.disciplina || 'Disciplina')}`;
+            } else {
+              alert('Clave incorrecta');
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('Error al verificar la clave');
+          });
       });
-    }
+    });
   </script>
 </body>
 </html>

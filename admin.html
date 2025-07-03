@@ -3,244 +3,1508 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Administración - Seguimiento de Atletas</title>
+  <title>Administración - Seguimiento Atletas</title>
   <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100">
-
-  <!-- Layout estático, en este ejemplo no cargamos layout.html para simplificar y evitar problemas -->
-  <header class="bg-blue-800 text-white p-4 text-center font-bold text-xl cursor-pointer" id="logoDAIA">
-    DAIA - Seguimiento de Atletas
-  </header>
-
-  <main class="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-xl border border-blue-200">
-
-    <div id="loginPanel" class="mb-6">
-      <input
-        type="password"
-        id="clave"
-        placeholder="Ingrese contraseña"
-        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-xs"
-      />
-      <button
-        id="btnEntrar"
-        class="ml-2 mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow-lg transition"
-      >
-        Entrar
-      </button>
-      <p id="mensaje" class="mt-2"></p>
-    </div>
-
-    <div id="adminPanel" class="hidden">
-
-      <h2 class="text-xl font-semibold mb-4 text-blue-800">Administrar Disciplinas</h2>
-      <input
-        id="nueva-disciplina"
-        type="text"
-        placeholder="Nueva disciplina"
-        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-sm"
-      />
-      <button
-        id="btnAgregarDisciplina"
-        class="ml-2 mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow-lg transition"
-      >
-        Agregar Disciplina
-      </button>
-
-      <ul id="lista-disciplinas" class="mt-4 max-w-sm border border-blue-200 rounded-lg shadow-inner p-4 space-y-2"></ul>
-
-      <h2 class="text-xl font-semibold mt-8 mb-4 text-blue-800">Administrar Atletas</h2>
-      <input
-        id="nuevo-atleta-nombre"
-        type="text"
-        placeholder="Nombre del atleta"
-        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-sm mb-2"
-      />
-      <select
-        id="select-disciplina"
-        class="p-2 rounded-lg border border-blue-300 focus:ring-2 focus:ring-blue-500 w-full max-w-sm mb-4"
-      >
-        <option value="">Seleccione Disciplina</option>
-      </select>
-      <button
-        id="btnAgregarAtleta"
-        class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow-lg transition"
-      >
-        Agregar Atleta
-      </button>
-
-      <ul id="lista-atletas" class="mt-4 max-w-sm border border-blue-200 rounded-lg shadow-inner p-4 space-y-2"></ul>
-
-      <div class="mt-8 text-center">
-        <button
-          id="btnExcel"
-          class="bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg shadow-lg transition"
-        >
-          Hoja de Excel
-        </button>
-        <button
-          id="btnSalir"
-          class="ml-4 bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-lg shadow-lg transition"
-        >
-          Salir Admin
-        </button>
-      </div>
-
-      <div class="mt-6 text-center">
-        <button id="btnVolver" class="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-lg shadow-md transition">
-          Volver
-        </button>
-      </div>
-
-    </div>
-  </main>
-
-  <script>
-    // URL base de tu Web App publicado en Google Apps Script
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec';
-
-    const loginPanel = document.getElementById('loginPanel');
-    const adminPanel = document.getElementById('adminPanel');
-    const mensaje = document.getElementById('mensaje');
-    const claveInput = document.getElementById('clave');
-    const btnEntrar = document.getElementById('btnEntrar');
-    const btnSalir = document.getElementById('btnSalir');
-    const btnExcel = document.getElementById('btnExcel');
-    const listaDisciplinas = document.getElementById('lista-disciplinas');
-    const listaAtletas = document.getElementById('lista-atletas');
-    const nuevaDisciplinaInput = document.getElementById('nueva-disciplina');
-    const nuevoAtletaNombreInput = document.getElementById('nuevo-atleta-nombre');
-    const selectDisciplina = document.getElementById('select-disciplina');
-
-    btnEntrar.addEventListener('click', () => {
-      const clave = claveInput.value.trim();
-      if (clave === 'a') { // Cambia esta clave a la que uses
-        loginPanel.style.display = 'none';
-        adminPanel.classList.remove('hidden');
-        mensaje.textContent = '';
-        cargarDatos();
-      } else {
-        mensaje.textContent = 'Clave incorrecta.';
-        mensaje.className = 'text-red-600 font-semibold';
-      }
-    });
-
-    btnSalir.addEventListener('click', () => {
-      adminPanel.classList.add('hidden');
-      loginPanel.style.display = 'block';
-      claveInput.value = '';
-      mensaje.textContent = '';
-    });
-
-    btnExcel.addEventListener('click', () => {
-      // Reemplaza con el enlace real a tu hoja de cálculo si quieres abrir directamente
-      window.open('https://docs.google.com/spreadsheets/d/1K8qGO46yhwpM_qTupQfGW9TNnazmU3Y4N8Wt-QfWB5c/edit', '_blank');
-    });
-
-    document.getElementById('btnAgregarDisciplina').addEventListener('click', () => {
-      const nombre = nuevaDisciplinaInput.value.trim();
-      if (!nombre) return alert('Ingrese un nombre válido para la disciplina');
-
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminKey: '7#pL9@xQ$2!zMnB&', tipo: 'nueva-disciplina', nombre })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'ok') {
-          nuevaDisciplinaInput.value = '';
-          cargarDatos();
-        } else alert('Error al agregar disciplina');
-      })
-      .catch(() => alert('Error en la conexión'));
-    });
-
-    document.getElementById('btnAgregarAtleta').addEventListener('click', () => {
-      const nombre = nuevoAtletaNombreInput.value.trim();
-      const disciplinaId = selectDisciplina.value;
-      if (!nombre || !disciplinaId) return alert('Complete el nombre del atleta y seleccione disciplina');
-
-      fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminKey: '7#pL9@xQ$2!zMnB&', tipo: 'nuevo-atleta', nombre, disciplinaId })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'ok') {
-          nuevoAtletaNombreInput.value = '';
-          cargarDatos();
-        } else alert('Error al agregar atleta');
-      })
-      .catch(() => alert('Error en la conexión'));
-    });
-
-    function cargarDatos() {
-      fetch(SCRIPT_URL + '?tipo=getDisciplinas')
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'ok') {
-            renderDisciplinas(data.disciplinas);
-            renderSelectDisciplinas(data.disciplinas);
-            cargarAtletas(data.disciplinas);
-          } else {
-            alert('Error al cargar disciplinas');
-          }
-        })
-        .catch(() => alert('Error al cargar datos'));
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --color-primary: #1E40AF;
+      --color-secondary: #1E3A8A;
+      --color-accent: #3B82F6;
+      --color-light: #EFF6FF;
+      --color-success: #10B981;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F9FAFB;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .hero-section {
+      background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+      color: white;
+      position: relative;
+    }
+    
+    .sport-card {
+      transition: all 0.3s ease;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .sport-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(30, 64, 175, 0.2);
+    }
+    
+    .sport-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3B82F6, #10B981);
+    }
+    
+    .carousel {
+      position: relative;
+      height: 400px;
+      overflow: hidden;
+    }
+    
+    .carousel-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .carousel-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+      background-size: cover;
+      background-position: center;
+    }
+    
+    .carousel-item.active {
+      opacity: 1;
+    }
+    
+    footer {
+      background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .logo {
+      height: 100px;
+      object-fit: contain;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    
+    .logo:hover {
+      transform: scale(1.05);
+    }
+    
+    .admin-table {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .admin-table th {
+      background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+    }
+    
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+    
+    .action-btn {
+      transition: all 0.3s ease;
+    }
+    
+    .action-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
-    function renderDisciplinas(disciplinas) {
-      listaDisciplinas.innerHTML = '';
+    /* Skeleton loading animation */
+    @keyframes shimmer {
+      0% { background-position: -468px 0 }
+      100% { background-position: 468px 0 }
+    }
+    
+    .skeleton {
+      background: #f6f7f8;
+      background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+      background-repeat: no-repeat;
+      background-size: 800px 104px;
+      display: inline-block;
+      position: relative;
+      animation: shimmer 1.5s infinite linear;
+    }
+    
+    .skeleton-text {
+      height: 1rem;
+      width: 100%;
+      margin-bottom: 0.5rem;
+      border-radius: 0.25rem;
+    }
+    
+    .skeleton-button {
+      height: 2.5rem;
+      width: 100%;
+      border-radius: 0.5rem;
+    }
+    
+    /* Skeleton para filas de tabla */
+    .skeleton-row td {
+      padding: 1rem;
+    }
+    
+    .skeleton-cell {
+      height: 1rem;
+      width: 100%;
+      border-radius: 0.25rem;
+    }
+    
+    @media (max-width: 768px) {
+      .logo {
+        height: 80px;
+      }
+      .logo-container {
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .carousel {
+        height: 300px;
+      }
+      .action-buttons {
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Panel de login (visible inicialmente) -->
+  <div id="login-panel" class="login-panel max-w-md mx-auto p-8 my-12">
+    <div class="text-center mb-6">
+      <i class="fas fa-user-shield text-5xl text-blue-600 mb-4"></i>
+      <h2 class="text-2xl font-bold text-gray-800">Acceso Administrador</h2>
+      <p class="text-gray-600 mt-2">Ingrese la clave de acceso</p>
+    </div>
+    
+    <div class="mb-6">
+      <label for="clave-admin" class="block text-gray-700 mb-2 font-medium">Clave:</label>
+      <input id="clave-admin" type="password" 
+        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all">
+    </div>
+    
+    <button id="btn-login" class="w-full bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-xl">
+      <i class="fas fa-sign-in-alt mr-2"></i> Ingresar
+    </button>
+  </div>
+
+  <!-- Contenido Admin (oculto inicialmente) -->
+  <div id="admin-content" class="hidden">
+    <!-- Hero Section -->
+    <header class="hero-section">
+      <div class="container mx-auto px-6 py-12 text-center">
+        <div class="logo-container">
+          <img src="https://i.imgur.com/Jf5iZVN.png" alt="Logo DAIA" class="logo" id="logo-daia">
+          <img src="https://i.imgur.com/9pDmTb3.png" alt="Logo UCV" class="logo" id="logo-ucv">
+        </div>
+        <div class="max-w-3xl mx-auto">
+          <h1 class="text-4xl md:text-5xl font-bold mb-6">
+            <i class="fas fa-user-shield mr-3"></i>Panel de Administración
+          </h1>
+          <p class="text-xl text-blue-100 mb-8">
+            Gestión integral de disciplinas, facultades, escuelas y atletas
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Carrusel de Imágenes -->
+    <div class="carousel">
+      <div class="carousel-inner">
+        <div class="carousel-item active" style="background-image: url('https://images.unsplash.com/photo-1547347298-4074fc3086f0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
+        <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
+        <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1517649763962-0c623066013b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
+      </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <main class="flex-grow container mx-auto px-6 py-12">
+      <div class="max-w-4xl mx-auto text-center mb-12">
+        <h2 class="text-3xl font-bold text-gray-800 mb-4">
+          <i class="fas fa-cogs mr-3 text-blue-600"></i>Gestión del Sistema
+        </h2>
+        <p class="text-lg text-gray-600">
+          Seleccione una categoría para administrar
+        </p>
+      </div>
+
+      <!-- Tarjetas de navegación -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+        <div id="btn-disciplinas" class="sport-card p-6 text-center cursor-pointer">
+          <div class="text-5xl mb-4 text-blue-600">
+            <i class="fas fa-running"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-gray-800">Disciplinas</h3>
+          <div class="bg-gradient-to-r from-blue-500 to-blue-700 text-white font-medium py-2 px-6 rounded-full inline-block">
+            Administrar
+          </div>
+        </div>
+
+        <div id="btn-facultades" class="sport-card p-6 text-center cursor-pointer">
+          <div class="text-5xl mb-4 text-green-600">
+            <i class="fas fa-university"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-gray-800">Facultades</h3>
+          <div class="bg-gradient-to-r from-green-500 to-green-700 text-white font-medium py-2 px-6 rounded-full inline-block">
+            Administrar
+          </div>
+        </div>
+
+        <div id="btn-escuelas" class="sport-card p-6 text-center cursor-pointer">
+          <div class="text-5xl mb-4 text-yellow-600">
+            <i class="fas fa-graduation-cap"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-gray-800">Escuelas</h3>
+          <div class="bg-gradient-to-r from-yellow-500 to-yellow-700 text-white font-medium py-2 px-6 rounded-full inline-block">
+            Administrar
+          </div>
+        </div>
+
+        <div id="btn-atletas" class="sport-card p-6 text-center cursor-pointer">
+          <div class="text-5xl mb-4 text-pink-600">
+            <i class="fas fa-users"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-gray-800">Atletas</h3>
+          <div class="bg-gradient-to-r from-pink-500 to-pink-700 text-white font-medium py-2 px-6 rounded-full inline-block">
+            Administrar
+          </div>
+        </div>
+
+        <div id="btn-config" class="sport-card p-6 text-center cursor-pointer">
+          <div class="text-5xl mb-4 text-purple-600">
+            <i class="fas fa-cog"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-3 text-gray-800">Configuración</h3>
+          <div class="bg-gradient-to-r from-purple-500 to-purple-700 text-white font-medium py-2 px-6 rounded-full inline-block">
+            Configurar
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección disciplinas -->
+      <section id="seccion-disciplinas" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-blue-800">
+            <i class="fas fa-running mr-2"></i>Disciplinas
+          </h2>
+          <span id="contador-disciplinas" class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+            Cargando...
+          </span>
+        </div>
+
+        <div class="mb-6 flex flex-wrap items-center gap-4">
+          <input type="text" id="input-nueva-disciplina" placeholder="Nombre nueva disciplina" 
+            class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <button id="btn-agregar-disciplina" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold py-2 px-6 rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all">
+            <i class="fas fa-plus mr-2"></i> Agregar
+          </button>
+        </div>
+
+        <div class="admin-table overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th class="p-4 text-left text-white">ID</th>
+                <th class="p-4 text-left text-white">Nombre</th>
+                <th class="p-4 text-left text-white">Clave</th>
+                <th class="p-4 text-left text-white">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-disciplinas-body" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Sección facultades -->
+      <section id="seccion-facultades" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-green-800">
+            <i class="fas fa-university mr-2"></i>Facultades
+          </h2>
+          <span id="contador-facultades" class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+            Cargando...
+          </span>
+        </div>
+
+        <div class="mb-6 flex flex-wrap items-center gap-4">
+          <input type="text" id="input-nueva-facultad" placeholder="Nombre nueva facultad" 
+            class="flex-grow px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+          <button id="btn-agregar-facultad" class="bg-gradient-to-r from-green-600 to-green-800 text-white font-bold py-2 px-6 rounded-lg hover:from-green-700 hover:to-green-900 transition-all">
+            <i class="fas fa-plus mr-2"></i> Agregar
+          </button>
+        </div>
+
+        <div class="admin-table overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th class="p-4 text-left text-white">ID</th>
+                <th class="p-4 text-left text-white">Nombre</th>
+                <th class="p-4 text-left text-white">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-facultades-body" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Sección escuelas -->
+      <section id="seccion-escuelas" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-yellow-800">
+            <i class="fas fa-graduation-cap mr-2"></i>Escuelas
+          </h2>
+          <span id="contador-escuelas" class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+            Cargando...
+          </span>
+        </div>
+
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <input type="text" id="input-nueva-escuela" placeholder="Nombre nueva escuela" 
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent">
+          </div>
+          <div>
+            <select id="select-facultad-escuela" 
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent">
+              <option value="">Seleccione facultad</option>
+            </select>
+          </div>
+          <div>
+            <button id="btn-agregar-escuela" class="w-full bg-gradient-to-r from-yellow-600 to-yellow-800 text-white font-bold py-2 px-6 rounded-lg hover:from-yellow-700 hover:to-yellow-900 transition-all">
+              <i class="fas fa-plus mr-2"></i> Agregar
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-table overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th class="p-4 text-left text-white">ID</th>
+                <th class="p-4 text-left text-white">Nombre</th>
+                <th class="p-4 text-left text-white">Facultad</th>
+                <th class="p-4 text-left text-white">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-escuelas-body" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Sección atletas -->
+      <section id="seccion-atletas" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-pink-800">
+            <i class="fas fa-users mr-2"></i>Atletas
+          </h2>
+          <span id="contador-atletas" class="bg-pink-100 text-pink-800 px-3 py-1 rounded-full text-sm font-medium">
+            Cargando...
+          </span>
+        </div>
+
+        <div class="mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-gray-700 mb-2">Nombre</label>
+            <input type="text" id="input-nuevo-atleta" placeholder="Nombre completo" 
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+          </div>
+
+          <div>
+            <label class="block text-gray-700 mb-2">Disciplina</label>
+            <select id="select-disciplina-atleta" 
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"></select>
+          </div>
+
+          <div>
+            <label class="block text-gray-700 mb-2">Facultad</label>
+            <select id="select-facultad-atleta" 
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"></select>
+          </div>
+
+          <div>
+            <label class="block text-gray-700 mb-2">Escuela</label>
+            <select id="select-escuela-atleta" 
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"></select>
+          </div>
+
+          <button id="btn-agregar-atleta" class="self-end bg-gradient-to-r from-pink-600 to-pink-800 text-white font-bold py-2 px-6 rounded-lg hover:from-pink-700 hover:to-pink-900 transition-all">
+            <i class="fas fa-plus mr-2"></i> Agregar
+          </button>
+        </div>
+
+        <div class="admin-table overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr>
+                <th class="p-4 text-left text-white">ID</th>
+                <th class="p-4 text-left text-white">Nombre</th>
+                <th class="p-4 text-left text-white">Disciplina</th>
+                <th class="p-4 text-left text-white">Facultad</th>
+                <th class="p-4 text-left text-white">Escuela</th>
+                <th class="p-4 text-left text-white">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-atletas-body" class="divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Sección configuración -->
+      <section id="seccion-config" class="hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-purple-800">
+            <i class="fas fa-cog mr-2"></i>Configuración
+          </h2>
+        </div>
+
+        <div class="max-w-md mx-auto bg-white p-6 rounded-xl shadow-md">
+          <h3 class="text-lg font-semibold text-purple-800 mb-4">Cambiar clave de administrador</h3>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-gray-700 mb-2">Clave actual</label>
+              <input type="password" id="clave-actual" 
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            
+            <div>
+              <label class="block text-gray-700 mb-2">Nueva clave</label>
+              <input type="password" id="nueva-clave" 
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            
+            <div>
+              <label class="block text-gray-700 mb-2">Confirmar nueva clave</label>
+              <input type="password" id="confirmar-clave" 
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+            </div>
+            
+            <button id="btn-cambiar-clave" class="w-full bg-gradient-to-r from-purple-600 to-purple-800 text-white font-bold py-3 px-6 rounded-lg hover:from-purple-700 hover:to-purple-900 transition-all">
+              <i class="fas fa-save mr-2"></i> Cambiar Clave
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Botones de acción al final -->
+      <div class="action-buttons">
+        <button id="btn-salir" class="action-btn bg-gradient-to-r from-red-600 to-red-800 text-white font-bold py-3 px-6 rounded-lg hover:from-red-700 hover:to-red-900 transition-all">
+          <i class="fas fa-sign-out-alt mr-2"></i> Salir del Sistema
+        </button>
+        <button id="btn-base-datos" class="action-btn bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all">
+          <i class="fas fa-database mr-2"></i> Ver Base de Datos
+        </button>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-white py-12">
+      <div class="container mx-auto px-6">
+        <div class="flex flex-col md:flex-row justify-between items-center">
+          <div class="mb-6 md:mb-0">
+            <h3 class="text-2xl font-bold mb-4">
+              <i class="fas fa-university mr-2"></i>Universidad Central de Venezuela
+            </h3>
+            <p class="text-blue-100">Dirección de Atención al Atleta</p>
+            <p class="text-blue-100">Departamento de Deportes</p>
+          </div>
+          
+          <div class="flex space-x-6 mb-6 md:mb-0">
+            <a href="#" class="text-white hover:text-blue-300 text-2xl">
+              <i class="fab fa-facebook"></i>
+            </a>
+            <a href="#" class="text-white hover:text-blue-300 text-2xl">
+              <i class="fab fa-twitter"></i>
+            </a>
+            <a href="#" class="text-white hover:text-blue-300 text-2xl">
+              <i class="fab fa-instagram"></i>
+            </a>
+          </div>
+          
+          <div class="text-center md:text-right">
+            <h4 class="font-bold mb-2">Contacto</h4>
+            <p class="text-blue-100">
+              <i class="fas fa-envelope mr-2"></i>deportes@ucv.ve
+            </p>
+            <p class="text-blue-100">
+              <i class="fas fa-phone mr-2"></i>+58 212 605-3031
+            </p>
+          </div>
+        </div>
+        
+        <div class="border-t border-blue-700 mt-8 pt-8 text-center text-blue-200">
+          <p>&copy; 2023 Sistema de Seguimiento de Atletas. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec';
+    const BASE_DATOS_URL = 'https://docs.google.com/spreadsheets/d/1K8qGO46yhwpM_qTupQfGW9TNnazmU3Y4N8Wt-QfWB5c/edit?usp=sharing';
+    let ADMIN_KEY = 'ucv2023'; // Clave por defecto, se puede cambiar
+
+    // Cache keys
+    const CACHE_KEY_DISCIPLINAS = 'admin_disciplinas';
+    const CACHE_KEY_FACULTADES = 'admin_facultades';
+    const CACHE_KEY_ESCUELAS = 'admin_escuelas';
+    const CACHE_KEY_ATLETAS = 'admin_atletas';
+    const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutos
+
+    // Inicializar carrusel
+    class Carousel {
+      constructor(container) {
+        this.container = container;
+        this.items = Array.from(container.querySelectorAll('.carousel-item'));
+        this.currentIndex = 0;
+        this.interval = null;
+        this.duration = 5000;
+        
+        this.init();
+      }
+      
+      init() {
+        this.showItem(this.currentIndex);
+        this.startAutoRotation();
+        
+        this.container.addEventListener('mouseenter', () => this.stopAutoRotation());
+        this.container.addEventListener('mouseleave', () => this.startAutoRotation());
+      }
+      
+      showItem(index) {
+        this.items.forEach(item => item.classList.remove('active'));
+        this.items[index].classList.add('active');
+      }
+      
+      next() {
+        this.currentIndex = (this.currentIndex + 1) % this.items.length;
+        this.showItem(this.currentIndex);
+      }
+      
+      startAutoRotation() {
+        this.interval = setInterval(() => this.next(), this.duration);
+      }
+      
+      stopAutoRotation() {
+        clearInterval(this.interval);
+      }
+    }
+
+    // Funciones para interactuar con la API
+    async function postData(data) {
+      try {
+        const formBody = new URLSearchParams(data).toString();
+        const response = await fetch(WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: formBody,
+        });
+        if (!response.ok) throw new Error('Error en respuesta del servidor');
+        return await response.json();
+      } catch (error) {
+        console.error('Error en postData:', error);
+        return { status: 'error', message: error.message || 'Error desconocido' };
+      }
+    }
+
+    async function fetchJSON(params) {
+      const url = new URL(WEB_APP_URL);
+      Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Error en fetch');
+      return response.json();
+    }
+
+    let disciplinas = [];
+    let facultades = [];
+    let escuelas = [];
+    let atletas = [];
+
+    // Inicializar la aplicación
+    document.addEventListener('DOMContentLoaded', function() {
+      // Siempre mostrar primero el panel de login
+      document.getElementById('admin-content').classList.add('hidden');
+      document.getElementById('login-panel').classList.remove('hidden');
+
+      // Configurar botón de login
+      document.getElementById('btn-login').addEventListener('click', function() {
+        const inputClave = document.getElementById('clave-admin');
+        if (inputClave.value === ADMIN_KEY) {
+          localStorage.setItem('adminKey', inputClave.value);
+          document.getElementById('login-panel').classList.add('hidden');
+          document.getElementById('admin-content').classList.remove('hidden');
+          mostrarSeccion('disciplinas');
+          
+          // Inicializar carrusel
+          new Carousel(document.querySelector('.carousel'));
+          
+          // Cargar datos mostrando skeletons
+          cargarDatos();
+        } else {
+          alert('Clave incorrecta');
+          inputClave.focus();
+        }
+      });
+
+      // Configurar botones de navegación
+      ['disciplinas', 'facultades', 'escuelas', 'atletas', 'config'].forEach(seccion => {
+        document.getElementById(`btn-${seccion}`).addEventListener('click', () => {
+          mostrarSeccion(seccion);
+        });
+      });
+
+      // Configurar botón para salir
+      document.getElementById('btn-salir').addEventListener('click', function() {
+        localStorage.removeItem('adminKey');
+        window.location.href = 'index.html';
+      });
+
+      // Configurar botón para base de datos
+      document.getElementById('btn-base-datos').addEventListener('click', function() {
+        window.open(BASE_DATOS_URL, '_blank');
+      });
+
+      // Configurar logos para volver al index
+      document.getElementById('logo-daia').addEventListener('click', function() {
+        window.location.href = 'index.html';
+      });
+
+      document.getElementById('logo-ucv').addEventListener('click', function() {
+        window.location.href = 'index.html';
+      });
+
+      // Configurar botón cambiar clave
+      document.getElementById('btn-cambiar-clave').addEventListener('click', cambiarClave);
+
+      // Configurar eventos delegados para los botones de acción
+      document.addEventListener('click', function(e) {
+        // Botones de disciplinas
+        if (e.target.closest('.editar-disciplina')) {
+          editarDisciplina(e);
+        } else if (e.target.closest('.eliminar-disciplina')) {
+          eliminarDisciplina(e);
+        } else if (e.target.closest('.guardar-clave')) {
+          guardarClaveDisciplina(e);
+        }
+        
+        // Botones de facultades
+        else if (e.target.closest('.editar-facultad')) {
+          editarFacultad(e);
+        } else if (e.target.closest('.eliminar-facultad')) {
+          eliminarFacultad(e);
+        }
+        
+        // Botones de escuelas
+        else if (e.target.closest('.editar-escuela')) {
+          editarEscuela(e);
+        } else if (e.target.closest('.eliminar-escuela')) {
+          eliminarEscuela(e);
+        }
+        
+        // Botones de atletas
+        else if (e.target.closest('.editar-atleta')) {
+          editarAtleta(e);
+        } else if (e.target.closest('.eliminar-atleta')) {
+          eliminarAtleta(e);
+        }
+      });
+
+      // Configurar botones de agregar
+      document.getElementById('btn-agregar-disciplina').addEventListener('click', agregarDisciplina);
+      document.getElementById('btn-agregar-facultad').addEventListener('click', agregarFacultad);
+      document.getElementById('btn-agregar-escuela').addEventListener('click', agregarEscuela);
+      document.getElementById('btn-agregar-atleta').addEventListener('click', agregarAtleta);
+    });
+
+    function mostrarSeccion(nombre) {
+      // Ocultar todas las secciones
+      ['disciplinas', 'facultades', 'escuelas', 'atletas', 'config'].forEach(sec => {
+        document.getElementById(`seccion-${sec}`).classList.add('hidden');
+      });
+      
+      // Mostrar la sección seleccionada
+      document.getElementById(`seccion-${nombre}`).classList.remove('hidden');
+    }
+
+    async function cargarDatos() {
+      try {
+        // Mostrar skeletons en las tablas
+        mostrarSkeletonTablas();
+
+        // Cargar datos con caché
+        const [disData, facData, escData, atlData] = await Promise.all([
+          cargarDatosConCache('getDisciplinas', CACHE_KEY_DISCIPLINAS),
+          cargarDatosConCache('getFacultades', CACHE_KEY_FACULTADES),
+          cargarDatosConCache('getEscuelas', CACHE_KEY_ESCUELAS),
+          cargarDatosConCache('getAtletas', CACHE_KEY_ATLETAS)
+        ]);
+
+        disciplinas = disData.disciplinas || [];
+        facultades = facData.facultades || [];
+        escuelas = escData.escuelas || [];
+        atletas = atlData.atletas || [];
+
+        actualizarContadores();
+        cargarTablaDisciplinas();
+        cargarTablaFacultades();
+        cargarTablaEscuelas();
+        cargarTablaAtletas();
+        llenarSelects();
+      } catch (e) {
+        alert('Error cargando datos: ' + e.message);
+        // Reintentar?
+      }
+    }
+
+    async function cargarDatosConCache(tipo, cacheKey) {
+      const now = new Date().getTime();
+      const cachedData = localStorage.getItem(cacheKey);
+      const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+
+      // Si hay datos en caché y no han expirado, usarlos
+      if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < CACHE_EXPIRATION_MS) {
+        return JSON.parse(cachedData);
+      }
+
+      // Si no, hacer la petición
+      const data = await fetchJSON({ tipo });
+      if (data.status !== 'ok') throw new Error(data.message);
+
+      // Guardar en caché
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+      localStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+
+      return data;
+    }
+
+    function mostrarSkeletonTablas() {
+      // Disciplinas
+      const tbodyDisciplinas = document.getElementById('tabla-disciplinas-body');
+      tbodyDisciplinas.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const tr = document.createElement('tr');
+        tr.className = 'skeleton-row';
+        tr.innerHTML = `
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+        `;
+        tbodyDisciplinas.appendChild(tr);
+      }
+
+      // Facultades
+      const tbodyFacultades = document.getElementById('tabla-facultades-body');
+      tbodyFacultades.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const tr = document.createElement('tr');
+        tr.className = 'skeleton-row';
+        tr.innerHTML = `
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+        `;
+        tbodyFacultades.appendChild(tr);
+      }
+
+      // Escuelas
+      const tbodyEscuelas = document.getElementById('tabla-escuelas-body');
+      tbodyEscuelas.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const tr = document.createElement('tr');
+        tr.className = 'skeleton-row';
+        tr.innerHTML = `
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+        `;
+        tbodyEscuelas.appendChild(tr);
+      }
+
+      // Atletas
+      const tbodyAtletas = document.getElementById('tabla-atletas-body');
+      tbodyAtletas.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const tr = document.createElement('tr');
+        tr.className = 'skeleton-row';
+        tr.innerHTML = `
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+          <td class="p-4"><div class="skeleton skeleton-cell"></div></td>
+        `;
+        tbodyAtletas.appendChild(tr);
+      }
+    }
+
+    function actualizarContadores() {
+      document.getElementById('contador-disciplinas').textContent = `${disciplinas.length} registros`;
+      document.getElementById('contador-facultades').textContent = `${facultades.length} registros`;
+      document.getElementById('contador-escuelas').textContent = `${escuelas.length} registros`;
+      document.getElementById('contador-atletas').textContent = `${atletas.length} registros`;
+    }
+
+    function cargarTablaDisciplinas() {
+      const tbody = document.getElementById('tabla-disciplinas-body');
+      tbody.innerHTML = '';
       disciplinas.forEach(d => {
-        const li = document.createElement('li');
-        li.textContent = d.nombre;
-        li.className = 'py-1 border-b border-blue-200';
-        listaDisciplinas.appendChild(li);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        tr.innerHTML = `
+          <td class="p-4">${d.id}</td>
+          <td class="p-4 font-medium">${d.nombre}</td>
+          <td class="p-4">
+            <div class="flex items-center gap-2">
+              <input type="password" class="clave-disciplina border border-gray-300 rounded-lg p-2 w-24 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                value="${d.clave || ''}" data-id="${d.id}">
+              <button class="guardar-clave text-blue-600 hover:text-blue-800" data-id="${d.id}">
+                <i class="fas fa-save"></i>
+              </button>
+            </div>
+          </td>
+          <td class="p-4">
+            <div class="flex gap-2">
+              <button class="editar-disciplina text-blue-600 hover:text-blue-800" data-id="${d.id}">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="eliminar-disciplina text-red-600 hover:text-red-800" data-id="${d.id}">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
       });
     }
 
-    function cargarAtletas(disciplinas) {
-      // Obtener atletas y agrupar por disciplina
-      fetch(SCRIPT_URL + '?tipo=getAtletas')
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === 'ok') {
-            listaAtletas.innerHTML = '';
-            data.atletas.forEach(a => {
-              const d = disciplinas.find(d => d.id === a.disciplinaId);
-              if (!d) return;
-              const li = document.createElement('li');
-              li.textContent = `${a.nombre} (${d.nombre})`;
-              li.className = 'py-1 border-b border-blue-200';
-              listaAtletas.appendChild(li);
-            });
-          } else {
-            alert('Error al cargar atletas');
-          }
-        })
-        .catch(() => alert('Error al cargar atletas'));
+    function cargarTablaFacultades() {
+      const tbody = document.getElementById('tabla-facultades-body');
+      tbody.innerHTML = '';
+      facultades.forEach(f => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        tr.innerHTML = `
+          <td class="p-4">${f.id}</td>
+          <td class="p-4 font-medium">${f.nombre}</td>
+          <td class="p-4">
+            <div class="flex gap-2">
+              <button class="editar-facultad text-green-600 hover:text-green-800" data-id="${f.id}">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="eliminar-facultad text-red-600 hover:text-red-800" data-id="${f.id}">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
 
-    function renderSelectDisciplinas(disciplinas) {
-      selectDisciplina.innerHTML = '<option value="">Seleccione Disciplina</option>';
+    function cargarTablaEscuelas() {
+      const tbody = document.getElementById('tabla-escuelas-body');
+      tbody.innerHTML = '';
+      escuelas.forEach(e => {
+        const facultad = facultades.find(f => f.id == e.facultadId);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        tr.innerHTML = `
+          <td class="p-4">${e.id}</td>
+          <td class="p-4 font-medium">${e.nombre}</td>
+          <td class="p-4">${facultad ? facultad.nombre : 'N/A'}</td>
+          <td class="p-4">
+            <div class="flex gap-2">
+              <button class="editar-escuela text-yellow-600 hover:text-yellow-800" data-id="${e.id}">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="eliminar-escuela text-red-600 hover:text-red-800" data-id="${e.id}">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function cargarTablaAtletas() {
+      const tbody = document.getElementById('tabla-atletas-body');
+      tbody.innerHTML = '';
+      atletas.forEach(a => {
+        const disciplina = disciplinas.find(d => d.id == a.disciplinaId);
+        const facultad = facultades.find(f => f.id == a.facultadId);
+        const escuela = escuelas.find(e => e.id == a.escuelaId);
+        
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-50';
+        tr.innerHTML = `
+          <td class="p-4">${a.id}</td>
+          <td class="p-4 font-medium">${a.nombre}</td>
+          <td class="p-4">${disciplina ? disciplina.nombre : 'N/A'}</td>
+          <td class="p-4">${facultad ? facultad.nombre : 'N/A'}</td>
+          <td class="p-4">${escuela ? escuela.nombre : 'N/A'}</td>
+          <td class="p-4">
+            <div class="flex gap-2">
+              <button class="editar-atleta text-pink-600 hover:text-pink-800" data-id="${a.id}">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="eliminar-atleta text-red-600 hover:text-red-800" data-id="${a.id}">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function llenarSelects() {
+      // Llenar select de facultades para escuelas
+      const selectFacultadEscuela = document.getElementById('select-facultad-escuela');
+      selectFacultadEscuela.innerHTML = '<option value="">Seleccione facultad</option>';
+      facultades.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f.id;
+        option.textContent = f.nombre;
+        selectFacultadEscuela.appendChild(option);
+      });
+
+      // Llenar selects para atletas
+      const selectDisciplinaAtleta = document.getElementById('select-disciplina-atleta');
+      selectDisciplinaAtleta.innerHTML = '<option value="">Seleccione disciplina</option>';
       disciplinas.forEach(d => {
         const option = document.createElement('option');
         option.value = d.id;
         option.textContent = d.nombre;
-        selectDisciplina.appendChild(option);
+        selectDisciplinaAtleta.appendChild(option);
+      });
+
+      const selectFacultadAtleta = document.getElementById('select-facultad-atleta');
+      selectFacultadAtleta.innerHTML = '<option value="">Seleccione facultad</option>';
+      facultades.forEach(f => {
+        const option = document.createElement('option');
+        option.value = f.id;
+        option.textContent = f.nombre;
+        selectFacultadAtleta.appendChild(option);
+      });
+
+      const selectEscuelaAtleta = document.getElementById('select-escuela-atleta');
+      selectEscuelaAtleta.innerHTML = '<option value="">Seleccione escuela</option>';
+      escuelas.forEach(e => {
+        const option = document.createElement('option');
+        option.value = e.id;
+        option.textContent = e.nombre;
+        selectEscuelaAtleta.appendChild(option);
+      });
+
+      // Actualizar escuelas cuando cambie la facultad
+      selectFacultadAtleta.addEventListener('change', function() {
+        const facultadId = this.value;
+        selectEscuelaAtleta.innerHTML = '<option value="">Seleccione escuela</option>';
+        
+        if (facultadId) {
+          const escuelasFiltradas = escuelas.filter(e => e.facultadId == facultadId);
+          escuelasFiltradas.forEach(e => {
+            const option = document.createElement('option');
+            option.value = e.id;
+            option.textContent = e.nombre;
+            selectEscuelaAtleta.appendChild(option);
+          });
+        }
       });
     }
 
-    document.getElementById('btnVolver').addEventListener('click', () => {
-      window.history.back();
-    });
+    // Funciones CRUD para disciplinas
+    async function agregarDisciplina() {
+      const nombre = document.getElementById('input-nueva-disciplina').value.trim();
+      if (!nombre) {
+        alert('Por favor ingrese un nombre para la disciplina');
+        return;
+      }
 
-    // Logo clickeable para volver al inicio
-    document.getElementById('logoDAIA').addEventListener('click', () => {
-      window.location.href = 'index.html';
-    });
+      try {
+        const res = await postData({
+          tipo: 'nueva-disciplina',
+          nombre: nombre,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Disciplina agregada correctamente');
+          document.getElementById('input-nueva-disciplina').value = '';
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_DISCIPLINAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al agregar disciplina: ' + error.message);
+      }
+    }
+
+    async function editarDisciplina(e) {
+      const btn = e.target.closest('.editar-disciplina');
+      const id = btn.dataset.id;
+      const disciplina = disciplinas.find(d => d.id == id);
+      const nuevoNombre = prompt('Editar nombre de disciplina:', disciplina.nombre);
+      
+      if (nuevoNombre && nuevoNombre !== disciplina.nombre) {
+        try {
+          const res = await postData({
+            tipo: 'editar-disciplina',
+            id: id,
+            nombre: nuevoNombre,
+            adminKey: ADMIN_KEY
+          });
+
+          if (res.status === 'ok') {
+            alert('Disciplina actualizada correctamente');
+            // Limpiar cache y recargar datos
+            localStorage.removeItem(CACHE_KEY_DISCIPLINAS);
+            cargarDatos();
+          } else {
+            throw new Error(res.message || 'Error desconocido');
+          }
+        } catch (error) {
+          alert('Error al actualizar disciplina: ' + error.message);
+        }
+      }
+    }
+
+    async function eliminarDisciplina(e) {
+      const btn = e.target.closest('.eliminar-disciplina');
+      const id = btn.dataset.id;
+      if (!confirm('¿Está seguro de eliminar esta disciplina? Esta acción no se puede deshacer.')) {
+        return;
+      }
+
+      try {
+        const res = await postData({
+          tipo: 'eliminar-disciplina',
+          id: id,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Disciplina eliminada correctamente');
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_DISCIPLINAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al eliminar disciplina: ' + error.message);
+      }
+    }
+
+    async function guardarClaveDisciplina(e) {
+      const btn = e.target.closest('.guardar-clave');
+      const id = btn.dataset.id;
+      const inputClave = document.querySelector(`.clave-disciplina[data-id="${id}"]`);
+      const nuevaClave = inputClave.value.trim();
+
+      try {
+        const res = await postData({
+          tipo: 'actualizarClaveDisciplina',
+          id: id,
+          clave: nuevaClave,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Clave de disciplina actualizada correctamente');
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al actualizar clave: ' + error.message);
+      }
+    }
+
+    // Funciones CRUD para facultades
+    async function agregarFacultad() {
+      const nombre = document.getElementById('input-nueva-facultad').value.trim();
+      if (!nombre) {
+        alert('Por favor ingrese un nombre para la facultad');
+        return;
+      }
+
+      try {
+        const res = await postData({
+          tipo: 'nueva-facultad',
+          nombre: nombre,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Facultad agregada correctamente');
+          document.getElementById('input-nueva-facultad').value = '';
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_FACULTADES);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al agregar facultad: ' + error.message);
+      }
+    }
+
+    async function editarFacultad(e) {
+      const btn = e.target.closest('.editar-facultad');
+      const id = btn.dataset.id;
+      const facultad = facultades.find(f => f.id == id);
+      const nuevoNombre = prompt('Editar nombre de facultad:', facultad.nombre);
+      
+      if (nuevoNombre && nuevoNombre !== facultad.nombre) {
+        try {
+          const res = await postData({
+            tipo: 'editar-facultad',
+            id: id,
+            nombre: nuevoNombre,
+            adminKey: ADMIN_KEY
+          });
+
+          if (res.status === 'ok') {
+            alert('Facultad actualizada correctamente');
+            // Limpiar cache y recargar datos
+            localStorage.removeItem(CACHE_KEY_FACULTADES);
+            cargarDatos();
+          } else {
+            throw new Error(res.message || 'Error desconocido');
+          }
+        } catch (error) {
+          alert('Error al actualizar facultad: ' + error.message);
+        }
+      }
+    }
+
+    async function eliminarFacultad(e) {
+      const btn = e.target.closest('.eliminar-facultad');
+      const id = btn.dataset.id;
+      // Verificar si hay escuelas asociadas
+      const escuelasAsociadas = escuelas.filter(e => e.facultadId == id);
+      if (escuelasAsociadas.length > 0) {
+        alert('No se puede eliminar la facultad porque tiene escuelas asociadas');
+        return;
+      }
+
+      if (!confirm('¿Está seguro de eliminar esta facultad? Esta acción no se puede deshacer.')) {
+        return;
+      }
+
+      try {
+        const res = await postData({
+          tipo: 'eliminar-facultad',
+          id: id,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Facultad eliminada correctamente');
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_FACULTADES);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al eliminar facultad: ' + error.message);
+      }
+    }
+
+    // Funciones CRUD para escuelas
+    async function agregarEscuela() {
+      const nombre = document.getElementById('input-nueva-escuela').value.trim();
+      const facultadId = document.getElementById('select-facultad-escuela').value;
+      
+      if (!nombre) {
+        alert('Por favor ingrese un nombre para la escuela');
+        return;
+      }
+      
+      if (!facultadId) {
+        alert('Por favor seleccione una facultad');
+        return;
+      }
+
+      try {
+        const res = await postData({
+          tipo: 'nueva-escuela',
+          nombre: nombre,
+          facultadId: facultadId,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Escuela agregada correctamente');
+          document.getElementById('input-nueva-escuela').value = '';
+          document.getElementById('select-facultad-escuela').value = '';
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_ESCUELAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al agregar escuela: ' + error.message);
+      }
+    }
+
+    async function editarEscuela(e) {
+      const btn = e.target.closest('.editar-escuela');
+      const id = btn.dataset.id;
+      const escuela = escuelas.find(e => e.id == id);
+      const facultadActual = facultades.find(f => f.id == escuela.facultadId);
+      
+      const nuevoNombre = prompt('Editar nombre de escuela:', escuela.nombre);
+      if (!nuevoNombre || nuevoNombre === escuela.nombre) {
+        return;
+      }
+      
+      try {
+        const res = await postData({
+          tipo: 'editar-escuela',
+          id: id,
+          nombre: nuevoNombre,
+          facultadId: escuela.facultadId,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Escuela actualizada correctamente');
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_ESCUELAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al actualizar escuela: ' + error.message);
+      }
+    }
+
+    async function eliminarEscuela(e) {
+      const btn = e.target.closest('.eliminar-escuela');
+      const id = btn.dataset.id;
+      // Verificar si hay atletas asociados
+      const atletasAsociados = atletas.filter(a => a.escuelaId == id);
+      if (atletasAsociados.length > 0) {
+        alert('No se puede eliminar la escuela porque tiene atletas asociados');
+        return;
+      }
+
+      if (!confirm('¿Está seguro de eliminar esta escuela? Esta acción no se puede deshacer.')) {
+        return;
+      }
+
+      try {
+        const res = await postData({
+          tipo: 'eliminar-escuela',
+          id: id,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Escuela eliminada correctamente');
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_ESCUELAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al eliminar escuela: ' + error.message);
+      }
+    }
+
+    // Funciones CRUD para atletas
+    async function agregarAtleta() {
+      const nombre = document.getElementById('input-nuevo-atleta').value.trim();
+      const disciplinaId = document.getElementById('select-disciplina-atleta').value;
+      const facultadId = document.getElementById('select-facultad-atleta').value;
+      const escuelaId = document.getElementById('select-escuela-atleta').value;
+      
+      if (!nombre) {
+        alert('Por favor ingrese el nombre del atleta');
+        return;
+      }
+      
+      if (!disciplinaId) {
+        alert('Por favor seleccione una disciplina');
+        return;
+      }
+      
+      if (!facultadId) {
+        alert('Por favor seleccione una facultad');
+        return;
+      }
+      
+      if (!escuelaId) {
+        alert('Por favor seleccione una escuela');
+        return;
+      }
+
+      try {
+        const res = await postData({
+          tipo: 'nuevo-atleta',
+          nombre: nombre,
+          disciplinaId: disciplinaId,
+          facultadId: facultadId,
+          escuelaId: escuelaId,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Atleta agregado correctamente');
+          document.getElementById('input-nuevo-atleta').value = '';
+          document.getElementById('select-disciplina-atleta').value = '';
+          document.getElementById('select-facultad-atleta').value = '';
+          document.getElementById('select-escuela-atleta').value = '';
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_ATLETAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al agregar atleta: ' + error.message);
+      }
+    }
+
+    async function editarAtleta(e) {
+      const btn = e.target.closest('.editar-atleta');
+      const id = btn.dataset.id;
+      const atleta = atletas.find(a => a.id == id);
+      
+      const nuevoNombre = prompt('Editar nombre del atleta:', atleta.nombre);
+      if (!nuevoNombre || nuevoNombre === atleta.nombre) {
+        return;
+      }
+      
+      try {
+        const res = await postData({
+          tipo: 'editar-atleta',
+          id: id,
+          nombre: nuevoNombre,
+          disciplinaId: atleta.disciplinaId,
+          facultadId: atleta.facultadId,
+          escuelaId: atleta.escuelaId,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Atleta actualizado correctamente');
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_ATLETAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al actualizar atleta: ' + error.message);
+      }
+    }
+
+    async function eliminarAtleta(e) {
+      const btn = e.target.closest('.eliminar-atleta');
+      const id = btn.dataset.id;
+      if (!confirm('¿Está seguro de eliminar este atleta? Esta acción no se puede deshacer.')) {
+        return;
+      }
+
+      try {
+        const res = await postData({
+          tipo: 'eliminar-atleta',
+          id: id,
+          adminKey: ADMIN_KEY
+        });
+
+        if (res.status === 'ok') {
+          alert('Atleta eliminado correctamente');
+          // Limpiar cache y recargar datos
+          localStorage.removeItem(CACHE_KEY_ATLETAS);
+          cargarDatos();
+        } else {
+          throw new Error(res.message || 'Error desconocido');
+        }
+      } catch (error) {
+        alert('Error al eliminar atleta: ' + error.message);
+      }
+    }
+
+    // Función para cambiar la clave de administrador
+    async function cambiarClave() {
+      const claveActual = document.getElementById('clave-actual').value;
+      const nuevaClave = document.getElementById('nueva-clave').value;
+      const confirmarClave = document.getElementById('confirmar-clave').value;
+      
+      if (!claveActual || !nuevaClave || !confirmarClave) {
+        alert('Por favor complete todos los campos');
+        return;
+      }
+      
+      if (claveActual !== ADMIN_KEY) {
+        alert('La clave actual no es correcta');
+        return;
+      }
+      
+      if (nuevaClave !== confirmarClave) {
+        alert('Las nuevas claves no coinciden');
+        return;
+      }
+      
+      if (nuevaClave === ADMIN_KEY) {
+        alert('La nueva clave debe ser diferente a la actual');
+        return;
+      }
+      
+      try {
+        // En una aplicación real, aquí harías una llamada al servidor para cambiar la clave
+        // Pero como estamos usando una clave local, la actualizamos directamente
+        ADMIN_KEY = nuevaClave;
+        localStorage.setItem('adminKey', nuevaClave);
+        
+        document.getElementById('clave-actual').value = '';
+        document.getElementById('nueva-clave').value = '';
+        document.getElementById('confirmar-clave').value = '';
+        
+        alert('Clave cambiada correctamente');
+      } catch (error) {
+        alert('Error al cambiar la clave: ' + error.message);
+      }
+    }
   </script>
 </body>
 </html>

@@ -3,107 +3,519 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Atletas</title>
+  <title>Evaluación de Atletas</title>
   <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-
-  <div id="layout-wrapper"></div>
-
-  <main class="max-w-4xl mx-auto mt-10 p-6 bg-white rounded-xl shadow-xl border border-blue-200 text-center">
-    <h1 id="tituloDisciplina" class="text-4xl font-bold mb-8 inline-block bg-white px-4 py-2 rounded-lg shadow">Atletas</h1>
-    <div id="atletas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-    <button id="btnVolver" class="mt-8 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded-lg shadow-md transition">Volver</button>
-  </main>
-
-  <script>
-    async function loadLayout() {
-      const res = await fetch('layout.html');
-      if (!res.ok) throw new Error('No se pudo cargar layout.html');
-      const html = await res.text();
-      document.getElementById('layout-wrapper').innerHTML = html;
-      document.getElementById('logoDAIA').addEventListener('click', () => {
-        window.location.href = 'index.html';
-      });
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --color-primary: #1E40AF;
+      --color-secondary: #1E3A8A;
+      --color-accent: #3B82F6;
+      --color-light: #EFF6FF;
+      --color-success: #10B981;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F9FAFB;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .hero-section {
+      background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
+      color: white;
+      position: relative;
+    }
+    
+    .sport-card {
+      transition: all 0.3s ease;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background: white;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .sport-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(30, 64, 175, 0.2);
+    }
+    
+    .sport-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #3B82F6, #10B981);
+    }
+    
+    .carousel {
+      position: relative;
+      height: 400px;
+      overflow: hidden;
+    }
+    
+    .carousel-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    
+    .carousel-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+      background-size: cover;
+      background-position: center;
+    }
+    
+    .carousel-item.active {
+      opacity: 1;
+    }
+    
+    footer {
+      background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
+    }
+    
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .logo {
+      height: 100px;
+      object-fit: contain;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    
+    .logo:hover {
+      transform: scale(1.05);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(to right, #3B82F6, #1E40AF);
+      color: white;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(to right, #2563EB, #1E3A8A);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(to right, #6B7280, #4B5563);
+      color: white;
+      font-weight: 600;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+      background: linear-gradient(to right, #4B5563, #374151);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .badge-success {
+      background-color: #D1FAE5;
+      color: #065F46;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+    }
+    
+    .badge-warning {
+      background-color: #FEF3C7;
+      color: #92400E;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
     }
 
-    async function cargarAtletas() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const disciplinaId = urlParams.get('disciplinaId');
-      const disciplinaNombre = urlParams.get('disciplinaNombre');
-      document.getElementById('tituloDisciplina').textContent = disciplinaNombre || 'Atletas';
-
-      try {
-        const res = await fetch('https://script.google.com/macros/s/AKfycbxNqPPsg5mHBPR0bWH8zQuHL2BHYXEFFxCCv_rNRIYvg6YH7QQbjD6Ho7GOJlRY6F23BQ/exec?tipo=get');
-        const data = await res.json();
-
-        const cont = document.getElementById('atletas');
-        cont.innerHTML = '';
-
-        const disciplina = data.disciplinas.find(d => d.id == disciplinaId);
-        if (!disciplina) {
-          cont.textContent = 'Disciplina no encontrada';
-          return;
-        }
-
-        disciplina.atletas.forEach(a => {
-          const btn = document.createElement('button');
-          btn.textContent = a.respondido ? `${a.nombre} ✓ Respondido` : a.nombre;
-          btn.className = a.respondido
-            ? 'bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md cursor-default opacity-70'
-            : 'bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md cursor-pointer';
-
-          if (!a.respondido) {
-            btn.addEventListener('click', () => {
-              window.location.href = `cuestionario.html?nombre=${encodeURIComponent(a.nombre)}&disciplina=${encodeURIComponent(disciplina.nombre)}`;
-            });
-          } else {
-            btn.disabled = true;
-          }
-          cont.appendChild(btn);
-        });
-
-      } catch (e) {
-        alert('Error cargando atletas');
+    /* Skeleton loading animation */
+    @keyframes shimmer {
+      0% { background-position: -468px 0 }
+      100% { background-position: 468px 0 }
+    }
+    
+    .skeleton {
+      background: #f6f7f8;
+      background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+      background-repeat: no-repeat;
+      background-size: 800px 104px;
+      display: inline-block;
+      position: relative;
+      animation: shimmer 1.5s infinite linear;
+    }
+    
+    .skeleton-text {
+      height: 1rem;
+      width: 100%;
+      margin-bottom: 0.5rem;
+      border-radius: 0.25rem;
+    }
+    
+    .skeleton-button {
+      height: 2.5rem;
+      width: 100%;
+      border-radius: 0.5rem;
+    }
+    
+    .skeleton-badge {
+      height: 1.5rem;
+      width: 6rem;
+      border-radius: 9999px;
+    }
+    
+    @media (max-width: 768px) {
+      .logo {
+        height: 80px;
+      }
+      .logo-container {
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+      .carousel {
+        height: 300px;
       }
     }
+  </style>
+</head>
+<body>
+  <!-- Hero Section -->
+  <header class="hero-section">
+    <div class="container mx-auto px-6 py-12 text-center">
+      <div class="logo-container">
+        <img src="https://i.imgur.com/Jf5iZVN.png" alt="Logo DAIA" class="logo" onclick="window.location.href='index.html'">
+        <img src="https://i.imgur.com/9pDmTb3.png" alt="Logo UCV" class="logo" onclick="window.location.href='index.html'">
+      </div>
+      <div class="max-w-3xl mx-auto">
+        <h1 class="text-4xl md:text-5xl font-bold mb-6">
+          <i class="fas fa-users mr-3"></i>Evaluación de Atletas
+        </h1>
+        <p class="text-xl text-blue-100 mb-8">
+          Sistema integral para el monitoreo y evaluación de deportistas universitarios
+        </p>
+      </div>
+    </div>
+  </header>
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      await loadLayout();
-      await cargarAtletas();
+  <!-- Carrusel de Imágenes Funcional -->
+  <div class="carousel">
+    <div class="carousel-inner">
+      <div class="carousel-item active" style="background-image: url('https://images.unsplash.com/photo-1547347298-4074fc3086f0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
+      <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
+      <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1517649763962-0c623066013b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
+    </div>
+  </div>
 
-      document.getElementById('btnVolver').addEventListener('click', () => {
+  <!-- Contenido Principal -->
+  <main class="flex-grow container mx-auto px-6 py-12">
+    <div class="bg-white p-6 rounded-lg shadow max-w-6xl mx-auto">
+      <div class="flex justify-between items-center mb-8">
+        <div>
+          <h2 id="tituloDisciplina" class="text-2xl font-bold text-blue-800 mb-2">Atletas</h2>
+          <p class="text-gray-600">Listado de atletas para evaluación</p>
+        </div>
+        <span id="contadorAtletas" class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
+          <i class="fas fa-users mr-2"></i><span>0/0</span>
+        </span>
+      </div>
+
+      <!-- Grid de atletas -->
+      <div id="atletas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+      <!-- Botones -->
+      <div class="flex flex-col sm:flex-row justify-between gap-4 mt-12">
+        <button id="btnVolverAtras" class="btn-secondary">
+          <i class="fas fa-arrow-left mr-2"></i> Volver
+        </button>
+        <button id="btnVolverInicio" class="btn-primary">
+          <i class="fas fa-home mr-2"></i> Ir al Inicio
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="text-white py-12">
+    <div class="container mx-auto px-6">
+      <div class="flex flex-col md:flex-row justify-between items-center">
+        <div class="mb-6 md:mb-0">
+          <h3 class="text-2xl font-bold mb-4">
+            <i class="fas fa-university mr-2"></i>Universidad Central de Venezuela
+          </h3>
+          <p class="text-blue-100">Dirección de Atención al Atleta</p>
+          <p class="text-blue-100">Departamento de Deportes</p>
+        </div>
+        
+        <div class="flex space-x-6 mb-6 md:mb-0">
+          <a href="#" class="text-white hover:text-blue-300 text-2xl">
+            <i class="fab fa-facebook"></i>
+          </a>
+          <a href="#" class="text-white hover:text-blue-300 text-2xl">
+            <i class="fab fa-twitter"></i>
+          </a>
+          <a href="#" class="text-white hover:text-blue-300 text-2xl">
+            <i class="fab fa-instagram"></i>
+          </a>
+        </div>
+        
+        <div class="text-center md:text-right">
+          <h4 class="font-bold mb-2">Contacto</h4>
+          <p class="text-blue-100">
+            <i class="fas fa-envelope mr-2"></i>deportes@ucv.ve
+          </p>
+          <p class="text-blue-100">
+            <i class="fas fa-phone mr-2"></i>+58 212 605-3031
+          </p>
+        </div>
+      </div>
+      
+      <div class="border-t border-blue-700 mt-8 pt-8 text-center text-blue-200">
+        <p>&copy; 2023 Sistema de Seguimiento de Atletas. Todos los derechos reservados.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Cache local para atletas
+    const ATLETAS_CACHE_KEY = 'atletas_cache';
+    const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutos
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Inicializar carrusel
+      new Carousel(document.querySelector('.carousel'));
+      
+      // Mostrar skeleton loading
+      mostrarSkeletonLoading();
+      
+      // Cargar atletas
+      cargarAtletas();
+      
+      // Configurar botones
+      document.getElementById('btnVolverInicio').addEventListener('click', () => {
+        window.location.href = 'index.html';
+      });
+      
+      document.getElementById('btnVolverAtras').addEventListener('click', () => {
         window.history.back();
       });
     });
 
-    async function loadLayout() {
-    const res = await fetch('layout.html');
-    const html = await res.text();
-    document.getElementById('layout-wrapper').innerHTML = html;
-
-    // Inicializar el carrusel DESPUÉS de que las imágenes estén cargadas
-    const imagenes = document.querySelectorAll('.carrusel');
-    let actual = 0;
-    if (imagenes.length > 1) {
-      setInterval(() => {
-        imagenes[actual].classList.remove('active');
-        actual = (actual + 1) % imagenes.length;
-        imagenes[actual].classList.add('active');
-      }, 5000);
+    function mostrarSkeletonLoading() {
+      const contenedor = document.getElementById('atletas');
+      contenedor.innerHTML = '';
+      
+      // Crear 6 skeleton cards
+      for (let i = 0; i < 6; i++) {
+        const card = document.createElement('div');
+        card.className = 'sport-card p-6';
+        card.innerHTML = `
+          <div class="mb-4">
+            <div class="skeleton skeleton-text" style="width: 70%"></div>
+            <div class="skeleton skeleton-badge mt-2"></div>
+          </div>
+          <div class="skeleton skeleton-button"></div>
+        `;
+        contenedor.appendChild(card);
+      }
     }
 
-    // Logo clickeable
-    const logo = document.getElementById('logoDAIA');
-    if (logo) {
-      logo.addEventListener('click', () => {
-        window.location.href = 'index.html';
+    async function cargarAtletas() {
+      const params = new URLSearchParams(window.location.search);
+      const disciplinaId = params.get('disciplinaId');
+      const disciplinaNombre = params.get('disciplinaNombre');
+      
+      // Verificar acceso
+      const accesoValido = sessionStorage.getItem(`disciplina_${disciplinaId}_access`) === 'true';
+      if (!accesoValido) {
+        alert('Acceso no autorizado');
+        window.location.href = `login-disciplina.html?disciplinaId=${disciplinaId}&disciplinaNombre=${encodeURIComponent(disciplinaNombre)}`;
+        return;
+      }
+      
+      document.getElementById('tituloDisciplina').textContent = disciplinaNombre || 'Atletas';
+
+      try {
+        // Verificar si hay datos en cache
+        const cachedData = localStorage.getItem(`${ATLETAS_CACHE_KEY}_${disciplinaId}`);
+        const cacheTimestamp = localStorage.getItem(`${ATLETAS_CACHE_KEY}_${disciplinaId}_timestamp`);
+        const now = new Date().getTime();
+        
+        // Usar cache si es menor a 5 minutos
+        if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < CACHE_EXPIRATION_MS) {
+          const data = JSON.parse(cachedData);
+          mostrarAtletas(data.atletas || [], disciplinaId, disciplinaNombre);
+          return;
+        }
+        
+        // Si no hay cache válido, hacer petición
+        const url = `https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec?tipo=getAtletas&disciplinaId=${disciplinaId}&timestamp=${Date.now()}`;
+        
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Error en la respuesta del servidor');
+        
+        const data = await res.json();
+        
+        if (data.status !== 'ok') throw new Error(data.message);
+        
+        // Guardar en cache
+        localStorage.setItem(`${ATLETAS_CACHE_KEY}_${disciplinaId}`, JSON.stringify(data));
+        localStorage.setItem(`${ATLETAS_CACHE_KEY}_${disciplinaId}_timestamp`, now.toString());
+        
+        mostrarAtletas(data.atletas || [], disciplinaId, disciplinaNombre);
+      } catch (err) {
+        console.error('Error:', err);
+        mostrarError(err.message);
+      }
+    }
+
+    function mostrarAtletas(atletas, disciplinaId, disciplinaNombre) {
+      const contenedor = document.getElementById('atletas');
+      contenedor.innerHTML = '';
+
+      if (atletas.length === 0) {
+        contenedor.innerHTML = `
+          <div class="col-span-full py-12 text-center">
+            <div class="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <i class="fas fa-user-slash text-3xl text-gray-400"></i>
+            </div>
+            <h3 class="text-xl font-medium text-gray-700 mb-2">No hay atletas registrados</h3>
+            <p class="text-gray-500 mb-6">Actualmente no hay atletas en esta disciplina.</p>
+            <button onclick="window.history.back()" class="btn-secondary px-8">
+              <i class="fas fa-arrow-left mr-2"></i> Regresar
+            </button>
+          </div>
+        `;
+        document.getElementById('contadorAtletas').querySelector('span').textContent = '0/0';
+        return;
+      }
+
+      const atletasFiltrados = atletas.filter(a => a.disciplinaId == disciplinaId);
+      const completados = atletasFiltrados.filter(a => a.respondido).length;
+      
+      document.getElementById('contadorAtletas').querySelector('span').textContent = `${completados}/${atletasFiltrados.length}`;
+      document.getElementById('contadorAtletas').title = `Completados: ${completados} de ${atletasFiltrados.length}`;
+
+      atletasFiltrados.forEach(atleta => {
+        const card = document.createElement('div');
+        card.className = `sport-card ${atleta.respondido ? 'border-green-200' : ''}`;
+        
+        card.innerHTML = `
+          <div class="p-6">
+            <div class="flex justify-between items-start mb-4">
+              <h3 class="font-semibold text-lg text-gray-800 truncate">${atleta.nombre}</h3>
+              ${atleta.respondido 
+                ? '<span class="badge-success"><i class="fas fa-check-circle mr-1"></i> Completado</span>' 
+                : '<span class="badge-warning"><i class="fas fa-clock mr-1"></i> Pendiente</span>'}
+            </div>
+            
+            <div class="mt-6">
+              ${!atleta.respondido 
+                ? `<button class="btn-primary w-full">
+                    <i class="fas fa-edit mr-2"></i> Evaluar
+                  </button>` 
+                : `<div class="text-center py-2">
+                    <p class="text-sm text-green-600 font-medium"><i class="fas fa-check-circle mr-1"></i> Evaluado</p>
+                    <p class="text-xs text-gray-500 mt-1">${new Date().toLocaleDateString('es-ES')}</p>
+                  </div>`}
+            </div>
+          </div>
+        `;
+
+        if (!atleta.respondido) {
+          card.querySelector('button').addEventListener('click', () => {
+            window.location.href = `cuestionario.html?nombre=${encodeURIComponent(atleta.nombre)}&disciplina=${encodeURIComponent(disciplinaNombre)}&atletaId=${atleta.id}&disciplinaId=${disciplinaId}`;
+          });
+        }
+
+        contenedor.appendChild(card);
       });
     }
-  }
 
-  loadLayout();
+    function mostrarError(message) {
+      document.getElementById('atletas').innerHTML = `
+        <div class="col-span-full py-12 text-center">
+          <div class="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
+          </div>
+          <h3 class="text-xl font-medium text-gray-800 mb-2">Error al cargar datos</h3>
+          <p class="text-gray-600 mb-6">${message || 'Ocurrió un problema al obtener la lista de atletas.'}</p>
+          <button onclick="cargarAtletas()" class="btn-primary px-8">
+            <i class="fas fa-sync-alt mr-2"></i> Intentar nuevamente
+          </button>
+        </div>
+      `;
+      document.getElementById('contadorAtletas').querySelector('span').textContent = 'Error';
+    }
+
+    // Clase para manejar el carrusel
+    class Carousel {
+      constructor(container) {
+        this.container = container;
+        this.items = Array.from(container.querySelectorAll('.carousel-item'));
+        this.currentIndex = 0;
+        this.interval = null;
+        this.duration = 5000;
+        
+        this.init();
+      }
+      
+      init() {
+        this.showItem(this.currentIndex);
+        this.startAutoRotation();
+        
+        this.container.addEventListener('mouseenter', () => this.stopAutoRotation());
+        this.container.addEventListener('mouseleave', () => this.startAutoRotation());
+      }
+      
+      showItem(index) {
+        this.items.forEach(item => item.classList.remove('active'));
+        this.items[index].classList.add('active');
+      }
+      
+      next() {
+        this.currentIndex = (this.currentIndex + 1) % this.items.length;
+        this.showItem(this.currentIndex);
+      }
+      
+      startAutoRotation() {
+        this.interval = setInterval(() => this.next(), this.duration);
+      }
+      
+      stopAutoRotation() {
+        clearInterval(this.interval);
+      }
+    }
   </script>
-
 </body>
 </html>
