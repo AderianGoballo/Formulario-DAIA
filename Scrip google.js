@@ -46,6 +46,9 @@ function doGet(e) {
       case 'verificarAccesoDisciplina':
         respuesta = verificarAccesoDisciplina(e.parameter.disciplinaId, e.parameter.clave);
         break;
+      case 'getIconosDisciplinas':
+        respuesta = getIconosDisciplinas();
+        break;
       default:
         respuesta = { 
           status: 'error', 
@@ -140,6 +143,9 @@ function doPost(e) {
       case 'actualizarClaveDisciplina':
         respuesta = actualizarClaveDisciplina(datos.id, datos.clave);
         break;
+      case 'actualizarIconoDisciplina':
+        respuesta = actualizarIconoDisciplina(datos.id, datos.icono);
+        break;
       default:
         respuesta = { 
           status: 'error', 
@@ -159,7 +165,8 @@ function doPost(e) {
       'getAtletas_', 
       'getFacultades_', 
       'getEscuelas_',
-      'getDisciplinasConAtletas_'
+      'getDisciplinasConAtletas_',
+      'getIconosDisciplinas_'
     ]);
   }
   
@@ -335,6 +342,72 @@ function getDisciplinasConAtletas() {
   
   cache.put('disciplinas_con_atletas', JSON.stringify(result), CACHE_EXPIRATION);
   return result;
+}
+
+function getIconosDisciplinas() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('IconosDisciplinas');
+  
+  if (!sheet) {
+    // Si la hoja no existe, crear una nueva con datos básicos
+    const newSheet = ss.insertSheet('IconosDisciplinas');
+    newSheet.appendRow(['disciplinaId', 'icono']);
+    return { status: 'ok', iconos: [] };
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data.shift();
+  
+  // Verificar si la hoja tiene la estructura correcta
+  if (!headers.includes('disciplinaId') || !headers.includes('icono')) {
+    return { status: 'error', message: 'Estructura de hoja IconosDisciplinas incorrecta' };
+  }
+
+  const iconos = data.map(row => {
+    return {
+      disciplinaId: row[headers.indexOf('disciplinaId')],
+      icono: row[headers.indexOf('icono')] || 'fa-trophy' // Valor por defecto
+    };
+  });
+
+  return { status: 'ok', iconos: iconos };
+}
+
+function actualizarIconoDisciplina(disciplinaId, icono) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName('IconosDisciplinas');
+  
+  // Si la hoja no existe, créala
+  if (!sheet) {
+    sheet = ss.insertSheet('IconosDisciplinas');
+    sheet.appendRow(['disciplinaId', 'icono']);
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data.shift();
+  
+  const disciplinaIdCol = headers.indexOf('disciplinaId');
+  const iconoCol = headers.indexOf('icono');
+  
+  // Buscar y actualizar
+  let updated = false;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][disciplinaIdCol] == disciplinaId) {
+      sheet.getRange(i + 2, iconoCol + 1).setValue(icono);
+      updated = true;
+      break;
+    }
+  }
+  
+  // Si no existe, agregar nuevo registro
+  if (!updated) {
+    sheet.appendRow([disciplinaId, icono]);
+  }
+  
+  // Limpiar caché
+  CacheService.getScriptCache().remove('getIconosDisciplinas_');
+  
+  return { status: 'ok' };
 }
 
 function guardarRespuesta(d) {

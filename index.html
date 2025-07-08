@@ -118,7 +118,8 @@
   <!-- Hero Section -->
   <header class="hero-section">
     <div class="container mx-auto px-6 py-12 text-center">
-     <div class="logo-container">
+      <div class="container mx-auto px-6 py-12 text-center">
+        <div class="logo-container">
   <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
     <img src="ucv.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
 </div>
@@ -320,49 +321,76 @@
     }
     
     function mostrarDisciplinas(disciplinas) {
-      const contenedor = document.getElementById('contenedorDisciplinas');
-      contenedor.innerHTML = '';
-      
-      const iconos = [
-        'fa-football-ball', 'fa-basketball-ball', 'fa-volleyball-ball',
-        'fa-running', 'fa-swimming-pool', 'fa-table-tennis'
-      ];
-      
-      if (disciplinas.length === 0) {
-        contenedor.innerHTML = `
-          <div class="col-span-full text-center py-12">
-            <div class="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <i class="fas fa-exclamation-triangle text-3xl text-gray-400"></i>
-            </div>
-            <h3 class="text-xl font-medium text-gray-700 mb-2">No hay disciplinas registradas</h3>
-            <p class="text-gray-500">Actualmente no hay disciplinas disponibles.</p>
-          </div>
-        `;
-        return;
+  const contenedor = document.getElementById('contenedorDisciplinas');
+  contenedor.innerHTML = '';
+  
+  const iconosPorDisciplina = {
+    'ajedrez': 'fa-chess',
+    'fútbol': 'fa-futbol',
+    'futbol': 'fa-futbol',
+    'baloncesto': 'fa-basketball-ball',
+    'voleibol': 'fa-volleyball-ball',
+    'atletismo': 'fa-running',
+    'natación': 'fa-swimmer',
+    'natacion': 'fa-swimmer',
+    'tenis de mesa': 'fa-table-tennis',
+    'béisbol': 'fa-baseball-ball',
+    'beisbol': 'fa-baseball-ball',
+    'halterofilia': 'fa-dumbbell',
+    'bolos': 'fa-bowling-ball',
+    'karate': 'fa-user-ninja',
+    'judo': 'fa-user-ninja',
+    'taekwondo': 'fa-user-ninja',
+    'gimnasia': 'fa-spa',
+    'ciclismo': 'fa-bicycle'
+  };
+  
+  if (disciplinas.length === 0) {
+    contenedor.innerHTML = `
+      <div class="col-span-full text-center py-12">
+        <div class="mx-auto w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+          <i class="fas fa-exclamation-triangle text-3xl text-gray-400"></i>
+        </div>
+        <h3 class="text-xl font-medium text-gray-700 mb-2">No hay disciplinas registradas</h3>
+        <p class="text-gray-500">Actualmente no hay disciplinas disponibles.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  disciplinas.forEach(d => {
+    // Buscar ícono por nombre de disciplina (insensible a mayúsculas)
+    const nombreLower = d.nombre.toLowerCase();
+    let icono = 'fa-trophy'; // Ícono por defecto
+    
+    for (const [key, value] of Object.entries(iconosPorDisciplina)) {
+      if (nombreLower.includes(key)) {
+        icono = value;
+        break;
       }
-      
-      disciplinas.forEach((d, index) => {
-        const card = document.createElement('div');
-        card.className = 'sport-card bg-white shadow-md';
-        card.innerHTML = `
-          <div class="p-6 text-center">
-            <div class="text-5xl mb-4 text-blue-600">
-              <i class="fas ${iconos[index % iconos.length]}"></i>
-            </div>
-            <h3 class="text-xl font-bold mb-3 text-gray-800">${d.nombre}</h3>
-            <button class="btn-disciplina bg-gradient-to-r from-blue-500 to-blue-700 text-white font-medium py-2 px-6 rounded-full hover:from-blue-600 hover:to-blue-800 transition-all">
-              Seleccionar
-            </button>
-          </div>
-        `;
-        
-        card.querySelector('.btn-disciplina').addEventListener('click', () => {
-          window.location.href = `login-disciplina.html?disciplinaId=${d.id}&disciplinaNombre=${encodeURIComponent(d.nombre)}`;
-        });
-        
-        contenedor.appendChild(card);
-      });
     }
+    
+    const card = document.createElement('div');
+    card.className = 'sport-card bg-white shadow-md';
+    card.innerHTML = `
+      <div class="p-6 text-center">
+        <div class="text-5xl mb-4 text-blue-600">
+          <i class="fas ${icono}"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-3 text-gray-800">${d.nombre}</h3>
+        <button class="btn-disciplina bg-gradient-to-r from-blue-500 to-blue-700 text-white font-medium py-2 px-6 rounded-full hover:from-blue-600 hover:to-blue-800 transition-all">
+          Seleccionar
+        </button>
+      </div>
+    `;
+    
+    card.querySelector('.btn-disciplina').addEventListener('click', () => {
+      window.location.href = `login-disciplina.html?disciplinaId=${d.id}&disciplinaNombre=${encodeURIComponent(d.nombre)}`;
+    });
+    
+    contenedor.appendChild(card);
+  });
+}
   </script>
 </body>
 </html>
