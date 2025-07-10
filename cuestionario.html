@@ -248,7 +248,7 @@
     </div>
   </main>
 
-  <!-- Footer -->
+   <!-- Footer Mejorado -->
   <footer class="text-white py-12">
     <div class="container mx-auto px-6">
       <div class="flex flex-col md:flex-row justify-between items-center">
@@ -256,8 +256,8 @@
           <h3 class="text-2xl font-bold mb-4">
             <i class="fas fa-university mr-2"></i>Universidad Central de Venezuela
           </h3>
-          <p class="text-blue-100">Dirección de Atención al Atleta</p>
-          <p class="text-blue-100">Departamento de Deportes</p>
+          <p class="text-blue-100">Dirección de Deportes</p>
+          <p class="text-blue-100">División de Asistencia Integral al Atleta</p>
         </div>
         
         <div class="flex space-x-6 mb-6 md:mb-0">
@@ -275,10 +275,10 @@
         <div class="text-center md:text-right">
           <h4 class="font-bold mb-2">Contacto</h4>
           <p class="text-blue-100">
-            <i class="fas fa-envelope mr-2"></i>deportes@ucv.ve
+            <i class="fas fa-envelope mr-2"></i>daiadd@gmail.com
           </p>
           <p class="text-blue-100">
-            <i class="fas fa-phone mr-2"></i>+58 212 605-3031
+            <i class="fas fa-phone mr-2"></i>+58 212 605-4619
           </p>
         </div>
       </div>
@@ -436,10 +436,10 @@
               </div>
               
               <div class="form-group">
-                <label class="block text-gray-700 mb-2">Asistencia general (%):</label>
+                <label class="block text-gray-700 mb-2">Asistencia competiciones (%):</label>
                 <div class="flex items-center gap-4">
                   <input type="range" id="asistenciaGenSlider" min="0" max="100" value="0" class="w-full">
-                  <input type="number" id="asistenciaGenPorcentaje" name="asistenciaGeneral" min="0" max="100" 
+                  <input type="number" id="asistenciaGenPorcentaje" name="asistenciacompeticiones" min="0" max="100" 
                     class="form-input w-20 text-center" value="0">
                 </div>
               </div>
@@ -666,7 +666,7 @@
           estadoTactico: form.estadoTactico.value,
           actitud: form.actitud.value,
           asistencia: form.asistencia.value,
-          asistenciaGeneral: form.asistenciaGeneral.value,
+          asistenciacompeticiones: form.asistenciacompeticiones.value,
           observaciones: form.observaciones.value,
           facultad: form.facultad.options[form.facultad.selectedIndex].text,
           escuela: form.escuela.options[form.escuela.selectedIndex].text,
