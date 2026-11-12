@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function() {
-  if (!localStorage.getItem('adminKey')) {
+  if (!haySesion()) {
     window.location.href = 'admin.html';
     return;
   }

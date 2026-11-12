@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function() {
-  if (!localStorage.getItem('adminKey')) {
+  if (!haySesion()) {
     window.location.href = 'admin.html';
     return;
   }
@@ -23,11 +23,10 @@ async function cargarFacultades() {
       cache: timestamp
     });
     
-    // Procesar datos y decodificar nombres
-    facultades = (data.facultades || []).map(f => ({
-      ...f,
-      nombre: decodeURIComponent(f.nombre.replace(/\+/g, ' '))
-    }));
+    // El servidor ya devuelve los nombres decodificados
+    facultades = (data.facultades || []).map(function (f) {
+      return { id: f.id, nombre: f.nombre };
+    });
     
     actualizarContador();
     cargarTablaFacultades();
@@ -97,13 +96,9 @@ async function agregarFacultad() {
   }
 
   try {
-    // Codificar espacios correctamente
-    const nombreCodificado = encodeURIComponent(nombre).replace(/%20/g, '+');
-    
     const res = await postData({
       tipo: 'nueva-facultad',
-      nombre: nombreCodificado,
-      adminKey: ADMIN_KEY
+      nombre: nombre
     });
 
     if (res.status === 'ok') {
@@ -155,14 +150,10 @@ async function editarFacultad() {
 
 async function guardarCambiosFacultad(facultadId, nuevoNombre) {
   try {
-    // Codificar espacios correctamente
-    const nombreCodificado = encodeURIComponent(nuevoNombre).replace(/%20/g, '+');
-    
     const res = await postData({
       tipo: 'editar-facultad',
       id: facultadId,
-      nombre: nombreCodificado,
-      adminKey: ADMIN_KEY
+      nombre: nuevoNombre
     });
 
     if (res.status === 'ok') {

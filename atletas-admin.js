@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function() {
-  if (!localStorage.getItem('adminKey')) {
+  if (!haySesion()) {
     window.location.href = 'admin.html';
     return;
   }
@@ -18,6 +18,15 @@ let disciplinas = [];
 let facultades = [];
 let escuelas = [];
 let atletas = [];
+
+function escapeHtml(texto) {
+  return String(texto === null || texto === undefined ? '' : texto)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 async function cargarDisciplinas() {
   try {
@@ -116,10 +125,10 @@ function agregarFilaAtleta(atleta) {
   tr.className = 'hover:bg-gray-50';
   tr.innerHTML = `
     <td class="p-4">${atleta.id}</td>
-    <td class="p-4 font-medium">${atleta.nombre}</td>
-    <td class="p-4">${disciplina.nombre}</td>
-    <td class="p-4">${facultad.nombre}</td>
-    <td class="p-4">${escuela.nombre}</td>
+    <td class="p-4 font-medium">${escapeHtml(atleta.nombre)}</td>
+    <td class="p-4">${escapeHtml(disciplina.nombre)}</td>
+    <td class="p-4">${escapeHtml(facultad.nombre)}</td>
+    <td class="p-4">${escapeHtml(escuela.nombre)}</td>
     <td class="p-4">
       <div class="flex gap-2">
         <button class="editar-atleta text-pink-600 hover:text-pink-800" data-id="${atleta.id}">
@@ -149,7 +158,7 @@ function actualizarFilaAtleta(atletaId) {
   if (row) {
     row.innerHTML = `
       <td class="p-4">${atleta.id}</td>
-      <td class="p-4 font-medium">${atleta.nombre}</td>
+      <td class="p-4 font-medium">${escapeHtml(atleta.nombre)}</td>
       <td class="p-4">${disciplina.nombre}</td>
       <td class="p-4">${facultad.nombre}</td>
       <td class="p-4">${escuela.nombre}</td>
@@ -295,13 +304,13 @@ async function editarAtleta() {
   form.innerHTML += `
     <div>
       <label class="block text-gray-700 mb-2">Nombre</label>
-      <input type="text" id="edit-atleta-nombre" value="${atleta.nombre}" 
+      <input type="text" id="edit-atleta-nombre" value="${escapeHtml(atleta.nombre)}"
         class="w-full px-4 py-2 border border-gray-300 rounded-lg">
     </div>
   `;
   
   let optionsDisciplinas = disciplinas.map(d => 
-    `<option value="${d.id}" ${d.id == atleta.disciplinaId ? 'selected' : ''}>${d.nombre}</option>`
+    `<option value="${d.id}" ${d.id == atleta.disciplinaId ? 'selected' : ''}>${escapeHtml(d.nombre)}</option>`
   ).join('');
   form.innerHTML += `
     <div>
@@ -314,7 +323,7 @@ async function editarAtleta() {
   `;
   
   let optionsFacultades = facultades.map(f => 
-    `<option value="${f.id}" ${f.id == atleta.facultadId ? 'selected' : ''}>${f.nombre}</option>`
+    `<option value="${f.id}" ${f.id == atleta.facultadId ? 'selected' : ''}>${escapeHtml(f.nombre)}</option>`
   ).join('');
   form.innerHTML += `
     <div>
@@ -327,7 +336,7 @@ async function editarAtleta() {
   `;
   
   let optionsEscuelas = escuelas.map(e => 
-    `<option value="${e.id}" ${e.id == atleta.escuelaId ? 'selected' : ''}>${e.nombre}</option>`
+    `<option value="${e.id}" ${e.id == atleta.escuelaId ? 'selected' : ''}>${escapeHtml(e.nombre)}</option>`
   ).join('');
   form.innerHTML += `
     <div>

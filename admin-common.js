@@ -1,125 +1,252 @@
-// admin-common.js
-const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec';
-const BASE_DATOS_URL = 'https://docs.google.com/spreadsheets/d/1K8qGO46yhwpM_qTupQfGW9TNnazmU3Y4N8Wt-QfWB5c/edit?usp=sharing';
-let ADMIN_KEY = 'ucv2023';
+// admin-common.js — utilidades compartidas del panel DAIA
+//
+// IMPORTANTE: la clave de administrador ya NO vive en este archivo.
+// El navegador la pide en admin.html, el servidor la valida y solo se
+// guarda durante la sesión de la pestaña (sessionStorage).
 
-// Cache keys
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec';
+const BASE_DATOS_URL = 'https://docs.google.com/spreadsheets/d/1K8qGO46yhwpM_qTupQfGW9TNnazmU3Y4N8Wt-QfWB5c/edit';
+
+const CLAVE_SESION = 'adminKey';
+
+// Claves de caché (solo se usan para invalidar lo que guarda el navegador)
 const CACHE_KEY_DISCIPLINAS = 'admin_disciplinas';
 const CACHE_KEY_FACULTADES = 'admin_facultades';
 const CACHE_KEY_ESCUELAS = 'admin_escuelas';
 const CACHE_KEY_ATLETAS = 'admin_atletas';
 const CACHE_KEY_ICONOS = 'admin_iconos';
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutos
 
-// Verificar sesión al cargar cualquier página admin
-document.addEventListener('DOMContentLoaded', function() {
-  // Solo ejecutar en páginas admin
-  if (window.location.pathname.includes('-admin.html') || 
-      window.location.pathname.endsWith('admin.html')) {
-    
-    // Redirigir a login si no está autenticado (excepto en admin.html)
-    if (!localStorage.getItem('adminKey') && !window.location.pathname.endsWith('admin.html')) {
-      window.location.href = 'admin.html';
+// Clave en memoria de esta pestaña
+let ADMIN_KEY = leerClaveSesion();
+
+/* -------------------------------------------------------------------- */
+/* Sesión                                                               */
+/* -------------------------------------------------------------------- */
+
+function leerClaveSesion() {
+  try {
+    return sessionStorage.getItem(CLAVE_SESION) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function guardarSesion(clave) {
+  ADMIN_KEY = clave;
+  try {
+    sessionStorage.setItem(CLAVE_SESION, clave);
+  } catch (e) {
+    /* modo privado sin almacenamiento: la sesión durará esta página */
+  }
+}
+
+function cerrarSesion() {
+  ADMIN_KEY = '';
+  try {
+    sessionStorage.removeItem(CLAVE_SESION);
+    localStorage.removeItem(CLAVE_SESION); // limpia sesiones del sistema anterior
+  } catch (e) {
+    /* ignorado */
+  }
+}
+
+function haySesion() {
+  return !!leerClaveSesion();
+}
+
+function esPaginaAdmin() {
+  const ruta = window.location.pathname;
+  return ruta.endsWith('admin.html') || ruta.includes('-admin.html');
+}
+
+function esDashboard() {
+  return window.location.pathname.endsWith('admin.html');
+}
+
+/* -------------------------------------------------------------------- */
+/* API                                                                  */
+/* -------------------------------------------------------------------- */
+
+/**
+ * POST al backend. Si hay sesión, adjunta la clave automáticamente.
+ */
+async function postData(datos) {
+  const cuerpo = Object.assign({}, datos);
+
+  if (ADMIN_KEY && !cuerpo.adminKey) {
+    cuerpo.adminKey = ADMIN_KEY;
+  }
+
+  try {
+    const formBody = Object.keys(cuerpo)
+      .filter(k => cuerpo[k] !== undefined && cuerpo[k] !== null)
+      .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(cuerpo[k]))
+      .join('&');
+
+    const respuesta = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: formBody
+    });
+
+    if (!respuesta.ok) throw new Error('Error en la respuesta del servidor (' + respuesta.status + ')');
+    return await respuesta.json();
+  } catch (error) {
+    console.error('postData:', error);
+    return { status: 'error', message: error.message || 'Error de conexión' };
+  }
+}
+
+/**
+ * GET al backend. Si hay sesión, adjunta la clave automáticamente.
+ */
+async function fetchJSON(parametros) {
+  const url = new URL(WEB_APP_URL);
+  const datos = Object.assign({}, parametros);
+
+  if (ADMIN_KEY && !datos.adminKey) {
+    datos.adminKey = ADMIN_KEY;
+  }
+
+  Object.entries(datos).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) url.searchParams.append(k, v);
+  });
+
+  const respuesta = await fetch(url);
+  if (!respuesta.ok) throw new Error('Error al consultar el servidor (' + respuesta.status + ')');
+
+  const json = await respuesta.json();
+
+  if (json && json.code === 'unauthorized') {
+    cerrarSesion();
+    window.location.href = 'admin.html';
+    throw new Error('Sesión expirada');
+  }
+
+  return json;
+}
+
+/* -------------------------------------------------------------------- */
+/* Avisos                                                               */
+/* -------------------------------------------------------------------- */
+
+function mostrarMensaje(mensaje, tipo = 'success') {
+  const colores = {
+    success: 'bg-green-600',
+    error: 'bg-red-600',
+    info: 'bg-blue-600',
+    warning: 'bg-yellow-600'
+  };
+
+  const aviso = document.createElement('div');
+  aviso.className = 'fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg text-white ' +
+    (colores[tipo] || colores.info);
+  aviso.textContent = mensaje;
+  document.body.appendChild(aviso);
+
+  setTimeout(() => aviso.remove(), 3500);
+}
+
+/* -------------------------------------------------------------------- */
+/* Arranque                                                             */
+/* -------------------------------------------------------------------- */
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (!esPaginaAdmin()) return;
+
+  // Páginas internas: si no hay sesión, a la puerta.
+  if (!esDashboard() && !haySesion()) {
+    window.location.href = 'admin.html';
+    return;
+  }
+
+  if (esDashboard()) {
+    configurarLogin();
+  }
+
+  configurarBotonesComunes();
+});
+
+function configurarLogin() {
+  const panel = document.getElementById('login-panel');
+  const contenido = document.getElementById('admin-content');
+  const boton = document.getElementById('btn-login');
+  const campo = document.getElementById('clave-admin');
+
+  if (haySesion()) {
+    if (panel) panel.classList.add('hidden');
+    if (contenido) contenido.classList.remove('hidden');
+  }
+
+  if (!boton) return;
+
+  async function entrar() {
+    const clave = (campo && campo.value || '').trim();
+
+    if (!clave) {
+      alert('Ingrese la clave de acceso');
+      if (campo) campo.focus();
       return;
     }
 
-    // Configuración específica para admin.html
-    if (window.location.pathname.endsWith('admin.html')) {
-      const loginPanel = document.getElementById('login-panel');
-      const adminContent = document.getElementById('admin-content');
-      
-      // Mostrar dashboard si ya está autenticado
-      if (localStorage.getItem('adminKey')) {
-        if (loginPanel) loginPanel.classList.add('hidden');
-        if (adminContent) adminContent.classList.remove('hidden');
-      }
-      
-      // Configurar botón de login
-      const btnLogin = document.getElementById('btn-login');
-      if (btnLogin) {
-        btnLogin.addEventListener('click', function() {
-          const inputClave = document.getElementById('clave-admin');
-          if (inputClave && inputClave.value === ADMIN_KEY) {
-            localStorage.setItem('adminKey', inputClave.value);
-            if (loginPanel) loginPanel.classList.add('hidden');
-            if (adminContent) adminContent.classList.remove('hidden');
-          } else {
-            alert('Clave incorrecta');
-            if (inputClave) inputClave.focus();
-          }
-        });
-      }
-    }
+    boton.disabled = true;
+    const textoOriginal = boton.innerHTML;
+    boton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...';
 
-    // Configurar botón para base de datos (solo en admin.html)
-    const btnBaseDatos = document.getElementById('btn-base-datos');
-    if (btnBaseDatos) {
-      btnBaseDatos.addEventListener('click', function() {
-        window.open(BASE_DATOS_URL, '_blank');
+    try {
+      const resultado = await postData({ tipo: 'verificarAdmin', clave: clave });
+
+      if (resultado.status === 'ok') {
+        guardarSesion(clave);
+        if (campo) campo.value = '';
+        if (panel) panel.classList.add('hidden');
+        if (contenido) contenido.classList.remove('hidden');
+      } else {
+        alert(resultado.message || 'Clave incorrecta');
+        if (campo) {
+          campo.value = '';
+          campo.focus();
+        }
+      }
+    } catch (error) {
+      alert('No se pudo verificar la clave: ' + error.message);
+    } finally {
+      boton.disabled = false;
+      boton.innerHTML = textoOriginal;
+    }
+  }
+
+  boton.addEventListener('click', entrar);
+
+  if (campo) {
+    campo.addEventListener('keydown', function (evento) {
+      if (evento.key === 'Enter') entrar();
+    });
+  }
+}
+
+function configurarBotonesComunes() {
+  const salir = document.getElementById('btn-salir');
+  if (salir) {
+    salir.addEventListener('click', function () {
+      cerrarSesion();
+      window.location.href = 'index.html';
+    });
+  }
+
+  const baseDatos = document.getElementById('btn-base-datos');
+  if (baseDatos) {
+    baseDatos.addEventListener('click', function () {
+      window.open(BASE_DATOS_URL, '_blank');
+    });
+  }
+
+  ['logo-daia', 'logo-ucv'].forEach(function (id) {
+    const logo = document.getElementById(id);
+    if (logo) {
+      logo.addEventListener('click', function () {
+        window.location.href = 'index.html';
       });
     }
-  }
-
-  // Configurar botón para salir (existe en todas las páginas admin)
-  const btnSalir = document.getElementById('btn-salir');
-  if (btnSalir) {
-    btnSalir.addEventListener('click', function() {
-      localStorage.removeItem('adminKey');
-      window.location.href = 'index.html';
-    });
-  }
-
-  // Configurar logos para volver al index (en todas las páginas)
-  const logoDaia = document.getElementById('logo-daia');
-  if (logoDaia) {
-    logoDaia.addEventListener('click', function() {
-      window.location.href = 'index.html';
-    });
-  }
-
-  const logoUcv = document.getElementById('logo-ucv');
-  if (logoUcv) {
-    logoUcv.addEventListener('click', function() {
-      window.location.href = 'index.html';
-    });
-  }
-});
-
-// Funciones comunes
-async function postData(data) {
-  try {
-    const formBody = Object.keys(data)
-      .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(data[key])}`)
-      .join('&')
-      .replace(/%20/g, ' '); // Mantener espacios en blanco
-
-    const response = await fetch(WEB_APP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: formBody,
-    });
-    
-    if (!response.ok) throw new Error('Error en respuesta del servidor');
-    return await response.json();
-  } catch (error) {
-    console.error('Error en postData:', error);
-    return { status: 'error', message: error.message || 'Error desconocido' };
-  }
-}
-
-async function fetchJSON(params) {
-  const url = new URL(WEB_APP_URL);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
-  const response = await fetch(url);
-  if (!response.ok) throw new Error('Error en fetch');
-  return response.json();
-}
-
-function mostrarMensaje(mensaje, tipo = 'success') {
-  const toast = document.createElement('div');
-  toast.className = `fixed top-4 right-4 p-4 rounded-md shadow-lg ${tipo === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`;
-  toast.textContent = mensaje;
-  document.body.appendChild(toast);
-
-  setTimeout(() => toast.remove(), 3000);
+  });
 }

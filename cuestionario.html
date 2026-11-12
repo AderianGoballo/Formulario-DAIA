@@ -216,8 +216,7 @@
   <!-- Hero Section -->
   <header class="hero-section">
     <div class="container mx-auto px-6 py-12 text-center">
-      <div class="container mx-auto px-6 py-12 text-center">
-        <div class="logo-container">
+      <div class="logo-container">
   <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
     <img src="ucv.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
 </div>
@@ -297,13 +296,47 @@
     document.addEventListener('DOMContentLoaded', () => {
       // Inicializar carrusel
       new Carousel(document.querySelector('.carousel'));
-      
+
+      const params = new URLSearchParams(window.location.search);
+      const disciplinaId = params.get('disciplinaId') || '';
+      const disciplina = params.get('disciplina') || 'Disciplina';
+      const token = sessionStorage.getItem('disciplina_' + disciplinaId + '_token');
+
+      // Sin sesión de disciplina no se pinta el formulario
+      if (!disciplinaId || !token) {
+        alert('Tu sesión de disciplina no está activa. Vuelve a introducir la clave.');
+        mostrarAvisoSesion(disciplinaId, disciplina);
+        return;
+      }
+
       // Mostrar skeleton loading para el formulario
       mostrarSkeletonForm();
-      
+
       // Cargar el formulario
       montarFormulario();
     });
+
+    function mostrarAvisoSesion(disciplinaId, disciplina) {
+      const contenedor = document.getElementById('contenido-principal');
+      if (!contenedor) return;
+
+      contenedor.innerHTML =
+        '<div class="form-card p-8 text-center">' +
+          '<i class="fas fa-lock text-4xl text-blue-600 mb-4"></i>' +
+          '<h2 class="text-xl font-bold text-gray-800 mb-2">Sesión no iniciada</h2>' +
+          '<p class="text-gray-600 mb-6">Necesitas introducir la clave de la disciplina para evaluar atletas.</p>' +
+          '<a href="#" id="ir-login" class="btn-primary inline-block">Ir al acceso</a>' +
+        '</div>';
+
+      const enlace = document.getElementById('ir-login');
+      if (enlace) {
+        enlace.addEventListener('click', function (evento) {
+          evento.preventDefault();
+          window.location.href = 'login-disciplina.html?disciplinaId=' + encodeURIComponent(disciplinaId) +
+            '&disciplinaNombre=' + encodeURIComponent(disciplina);
+        });
+      }
+    }
 
     function mostrarSkeletonForm() {
       const mainContent = document.getElementById('contenido-principal');
@@ -361,6 +394,8 @@
       `;
     }
 
+    let contexto = { atletaId: '', disciplinaId: '', disciplina: '', nombre: '' };
+
     function montarFormulario() {
       const params = new URLSearchParams(window.location.search);
       const nombreAtleta = params.get('nombre') || 'Atleta';
@@ -368,14 +403,16 @@
       const atletaId = params.get('atletaId') || '';
       const disciplinaId = params.get('disciplinaId') || '';
 
+      contexto = { atletaId: atletaId, disciplinaId: disciplinaId, disciplina: disciplina, nombre: nombreAtleta };
+
       const contenido = `
         <div class="form-card p-8">
-          <h2 class="text-2xl font-bold text-blue-800 mb-6">Seguimiento de ${nombreAtleta}</h2>
+          <h2 class="text-2xl font-bold text-blue-800 mb-6">Seguimiento de <span id="titulo-atleta"></span></h2>
           <form id="formulario" class="space-y-6">
-            <input type="hidden" id="atleta" name="atleta" value="${nombreAtleta}" />
-            <input type="hidden" id="disciplina" name="disciplina" value="${disciplina}" />
-            <input type="hidden" id="atletaId" name="atletaId" value="${atletaId}" />
-            <input type="hidden" id="disciplinaId" name="disciplinaId" value="${disciplinaId}" />
+            <input type="hidden" id="atleta" name="atleta" value="" />
+            <input type="hidden" id="disciplina" name="disciplina" value="" />
+            <input type="hidden" id="atletaId" name="atletaId" value="" />
+            <input type="hidden" id="disciplinaId" name="disciplinaId" value="" />
 
             <!-- Sección de estados -->
             <div class="space-y-4">
@@ -493,6 +530,14 @@
       const mainContent = document.getElementById('contenido-principal');
       if (mainContent) {
         mainContent.innerHTML = contenido;
+
+        // Los datos de la URL se asignan como texto, nunca como HTML
+        document.getElementById('titulo-atleta').textContent = nombreAtleta;
+        document.getElementById('atleta').value = nombreAtleta;
+        document.getElementById('disciplina').value = disciplina;
+        document.getElementById('atletaId').value = atletaId;
+        document.getElementById('disciplinaId').value = disciplinaId;
+
         iniciarFormulario();
       } else {
         console.error('No se encontró el contenedor principal');
@@ -510,6 +555,16 @@
     }
 
     function iniciarFormulario() {
+      // Sin sesión de disciplina no se puede evaluar a nadie
+      const token = sessionStorage.getItem('disciplina_' + contexto.disciplinaId + '_token');
+
+      if (!contexto.disciplinaId || !token) {
+        alert('Tu sesión de disciplina no está activa. Vuelve a introducir la clave.');
+        window.location.href = 'login-disciplina.html?disciplinaId=' + encodeURIComponent(contexto.disciplinaId || '') +
+          '&disciplinaNombre=' + encodeURIComponent(contexto.disciplina || '');
+        return;
+      }
+
       // Sincronizar sliders con inputs numéricos
       function syncSliderInput(slider, input) {
         slider.addEventListener('input', () => {
@@ -538,8 +593,8 @@
 
       // Configurar botón de volver
       document.getElementById('btnVolver').addEventListener('click', () => {
-        const params = new URLSearchParams(window.location.search);
-        window.location.href = `atletas.html?disciplinaId=${params.get('disciplinaId')}&disciplinaNombre=${encodeURIComponent(params.get('disciplina'))}`;
+        window.location.href = 'atletas.html?disciplinaId=' + encodeURIComponent(contexto.disciplinaId) +
+          '&disciplinaNombre=' + encodeURIComponent(contexto.disciplina);
       });
     }
 
@@ -657,6 +712,7 @@
       try {
         const formData = {
           tipo: 'respuesta',
+          token: sessionStorage.getItem('disciplina_' + contexto.disciplinaId + '_token') || '',
           atleta: form.atleta.value,
           disciplina: form.disciplina.value,
           atletaId: form.atletaId.value,
@@ -687,8 +743,13 @@
 
         if (result.result === 'success') {
           alert('Cuestionario enviado correctamente');
-          const params = new URLSearchParams(window.location.search);
-          window.location.href = `atletas.html?disciplinaId=${form.disciplinaId.value}&disciplinaNombre=${encodeURIComponent(form.disciplina.value)}`;
+          window.location.href = 'atletas.html?disciplinaId=' + encodeURIComponent(contexto.disciplinaId) +
+            '&disciplinaNombre=' + encodeURIComponent(contexto.disciplina);
+        } else if (result.code === 'unauthorized') {
+          sessionStorage.removeItem('disciplina_' + contexto.disciplinaId + '_token');
+          alert('Tu sesión expiró. Vuelve a introducir la clave de la disciplina.');
+          window.location.href = 'login-disciplina.html?disciplinaId=' + encodeURIComponent(contexto.disciplinaId) +
+            '&disciplinaNombre=' + encodeURIComponent(contexto.disciplina);
         } else {
           throw new Error(result.message || 'Error al enviar el cuestionario');
         }

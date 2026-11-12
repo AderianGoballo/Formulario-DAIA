@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async function() {
-  if (!localStorage.getItem('adminKey')) {
+  if (!haySesion()) {
     window.location.href = 'admin.html';
     return;
   }
@@ -25,10 +25,9 @@ async function cargarFacultades() {
       cache: timestamp
     });
     
-    facultades = (data.facultades || []).map(f => ({
-      ...f,
-      nombre: decodeURIComponent(String(f.nombre || "").replace(/\+/g, ' '))
-    }));
+    facultades = (data.facultades || []).map(function (f) {
+      return { id: f.id, nombre: f.nombre };
+    });
     
     llenarSelectFacultades();
   } catch (error) {
@@ -46,11 +45,10 @@ async function cargarEscuelas() {
       cache: timestamp
     });
     
-    // CORRECCIÓN: Asegurar que nombre sea string
-    escuelas = (data.escuelas || []).map(e => ({
-      ...e,
-      nombre: decodeURIComponent(String(e.nombre || "").replace(/\+/g, ' '))
-    }));
+    // El servidor ya devuelve los nombres decodificados
+    escuelas = (data.escuelas || []).map(function (e) {
+      return { id: e.id, nombre: e.nombre, facultadId: e.facultadId };
+    });
     
     actualizarContador();
     cargarTablaEscuelas();
@@ -142,13 +140,10 @@ async function agregarEscuela() {
   }
 
   try {
-    const nombreCodificado = encodeURIComponent(nombre).replace(/%20/g, '+');
-    
     const res = await postData({
       tipo: 'nueva-escuela',
-      nombre: nombreCodificado,
-      facultadId: facultadId,
-      adminKey: ADMIN_KEY
+      nombre: nombre,
+      facultadId: facultadId
     });
 
     if (res.status === 'ok') {
@@ -236,14 +231,11 @@ async function editarEscuela() {
 
 async function guardarCambiosEscuela(escuelaId, nuevoNombre, facultadId) {
   try {
-    const nombreCodificado = encodeURIComponent(nuevoNombre).replace(/%20/g, '+');
-    
     const res = await postData({
       tipo: 'editar-escuela',
       id: escuelaId,
-      nombre: nombreCodificado,
-      facultadId: facultadId,
-      adminKey: ADMIN_KEY
+      nombre: nuevoNombre,
+      facultadId: facultadId
     });
 
     if (res.status === 'ok') {

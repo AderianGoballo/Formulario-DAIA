@@ -118,11 +118,10 @@
   <!-- Hero Section -->
   <header class="hero-section">
     <div class="container mx-auto px-6 py-12 text-center">
-      <div class="container mx-auto px-6 py-12 text-center">
-        <div class="logo-container">
-  <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
-    <img src="ucv.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
-</div>
+      <div class="logo-container">
+        <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
+        <img src="ucv.png" alt="Universidad Central de Venezuela" class="logo" onclick="window.location.href='index.html'">
+      </div>
       <div class="max-w-3xl mx-auto">
         <h1 class="text-4xl md:text-5xl font-bold mb-6">
           <i class="fas fa-trophy mr-3"></i>Seguimiento de Atletas
@@ -155,20 +154,7 @@
       </p>
     </div>
 
-    <div id="contenedorDisciplinas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-      <!-- Esqueleto de carga -->
-      <div class="col-span-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        ${Array(6).fill().map(() => `
-          <div class="sport-card bg-white shadow-md animate-pulse">
-            <div class="p-6 text-center">
-              <div class="h-12 w-12 mx-auto mb-4 bg-gray-200 rounded-full"></div>
-              <div class="h-6 w-3/4 mx-auto mb-3 bg-gray-200 rounded"></div>
-              <div class="h-10 w-32 mx-auto bg-gray-200 rounded-full"></div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
+    <div id="contenedorDisciplinas" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12"></div>
 
     <div class="text-center mt-8">
       <button id="btnAdmin" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -269,7 +255,8 @@
       // Inicializar carrusel
       const carousel = new Carousel(document.querySelector('.carousel'));
       
-      // Cargar disciplinas
+      // Esqueleto de carga y luego los datos
+      mostrarEsqueleto();
       cargarDisciplinas();
       
       // Botón administrador
@@ -277,6 +264,34 @@
         window.location.href = 'admin.html';
       });
     });
+
+    function escapeHtml(texto) {
+      return String(texto === null || texto === undefined ? '' : texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function mostrarEsqueleto() {
+      const contenedor = document.getElementById('contenedorDisciplinas');
+      if (!contenedor) return;
+
+      let html = '';
+      for (let i = 0; i < 6; i++) {
+        html += `
+          <div class="sport-card bg-white shadow-md animate-pulse">
+            <div class="p-6 text-center">
+              <div class="h-12 w-12 mx-auto mb-4 bg-gray-200 rounded-full"></div>
+              <div class="h-6 w-3/4 mx-auto mb-3 bg-gray-200 rounded"></div>
+              <div class="h-10 w-32 mx-auto bg-gray-200 rounded-full"></div>
+            </div>
+          </div>
+        `;
+      }
+      contenedor.innerHTML = html;
+    }
 
     async function cargarDisciplinas() {
       try {
@@ -359,17 +374,21 @@
   }
   
   disciplinas.forEach(d => {
-    // Buscar ícono por nombre de disciplina (insensible a mayúsculas)
-    const nombreLower = d.nombre.toLowerCase();
-    let icono = 'fa-trophy'; // Ícono por defecto
-    
-    for (const [key, value] of Object.entries(iconosPorDisciplina)) {
-      if (nombreLower.includes(key)) {
-        icono = value;
-        break;
+    // El ícono lo define el panel de administración; si falta, se deduce del nombre
+    const nombreLower = String(d.nombre || '').toLowerCase();
+    let icono = 'fa-trophy';
+
+    if (d.icono && /^fa-[a-z0-9-]+$/i.test(d.icono)) {
+      icono = d.icono;
+    } else {
+      for (const [key, value] of Object.entries(iconosPorDisciplina)) {
+        if (nombreLower.includes(key)) {
+          icono = value;
+          break;
+        }
       }
     }
-    
+
     const card = document.createElement('div');
     card.className = 'sport-card bg-white shadow-md';
     card.innerHTML = `
@@ -377,7 +396,7 @@
         <div class="text-5xl mb-4 text-blue-600">
           <i class="fas ${icono}"></i>
         </div>
-        <h3 class="text-xl font-bold mb-3 text-gray-800">${d.nombre}</h3>
+        <h3 class="text-xl font-bold mb-3 text-gray-800">${escapeHtml(d.nombre)}</h3>
         <button class="btn-disciplina bg-gradient-to-r from-blue-500 to-blue-700 text-white font-medium py-2 px-6 rounded-full hover:from-blue-600 hover:to-blue-800 transition-all">
           Seleccionar
         </button>

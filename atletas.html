@@ -213,11 +213,10 @@
   <!-- Hero Section -->
   <header class="hero-section">
     <div class="container mx-auto px-6 py-12 text-center">
-      <<div class="container mx-auto px-6 py-12 text-center">
-        <div class="logo-container">
-  <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
-    <img src="ucv.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
-</div>
+      <div class="logo-container">
+        <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
+        <img src="ucv.png" alt="Universidad Central de Venezuela" class="logo" onclick="window.location.href='index.html'">
+      </div>
       <div class="max-w-3xl mx-auto">
         <h1 class="text-4xl md:text-5xl font-bold mb-6">
           <i class="fas fa-users mr-3"></i>Evaluación de Atletas
@@ -309,7 +308,7 @@
 
   <script>
     // Cache local para atletas
-    const ATLETAS_CACHE_KEY = 'atletas_cache';
+    const ATLETAS_CACHE_KEY = 'atletas_cache_v2';
     const CACHE_EXPIRATION_MS = 5 * 60 * 1000; // 5 minutos
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -351,16 +350,30 @@
       }
     }
 
+    function escapeHtml(texto) {
+      return String(texto === null || texto === undefined ? '' : texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function irALogin(disciplinaId, disciplinaNombre) {
+      window.location.href = 'login-disciplina.html?disciplinaId=' + encodeURIComponent(disciplinaId || '') +
+        '&disciplinaNombre=' + encodeURIComponent(disciplinaNombre || '');
+    }
+
     async function cargarAtletas() {
       const params = new URLSearchParams(window.location.search);
       const disciplinaId = params.get('disciplinaId');
       const disciplinaNombre = params.get('disciplinaNombre');
-      
-      // Verificar acceso
-      const accesoValido = sessionStorage.getItem(`disciplina_${disciplinaId}_access`) === 'true';
-      if (!accesoValido) {
-        alert('Acceso no autorizado');
-        window.location.href = `login-disciplina.html?disciplinaId=${disciplinaId}&disciplinaNombre=${encodeURIComponent(disciplinaNombre)}`;
+
+      // La sesión la emite el servidor al validar la clave de la disciplina
+      const token = sessionStorage.getItem('disciplina_' + disciplinaId + '_token');
+
+      if (!disciplinaId || !token) {
+        irALogin(disciplinaId, disciplinaNombre);
         return;
       }
       
@@ -380,13 +393,23 @@
         }
         
         // Si no hay cache válido, hacer petición
-        const url = `https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec?tipo=getAtletas&disciplinaId=${disciplinaId}&timestamp=${Date.now()}`;
-        
+        const url = new URL('https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec');
+        url.searchParams.append('tipo', 'getAtletas');
+        url.searchParams.append('disciplinaId', disciplinaId);
+        url.searchParams.append('token', token);
+        url.searchParams.append('timestamp', Date.now());
+
         const res = await fetch(url);
         if (!res.ok) throw new Error('Error en la respuesta del servidor');
-        
+
         const data = await res.json();
-        
+
+        if (data.code === 'unauthorized') {
+          sessionStorage.removeItem('disciplina_' + disciplinaId + '_token');
+          irALogin(disciplinaId, disciplinaNombre);
+          return;
+        }
+
         if (data.status !== 'ok') throw new Error(data.message);
         
         // Guardar en cache
@@ -434,7 +457,7 @@
         card.innerHTML = `
           <div class="p-6">
             <div class="flex justify-between items-start mb-4">
-              <h3 class="font-semibold text-lg text-gray-800 truncate">${atleta.nombre}</h3>
+              <h3 class="font-semibold text-lg text-gray-800 truncate">${escapeHtml(atleta.nombre)}</h3>
               ${atleta.respondido 
                 ? '<span class="badge-success"><i class="fas fa-check-circle mr-1"></i> Completado</span>' 
                 : '<span class="badge-warning"><i class="fas fa-clock mr-1"></i> Pendiente</span>'}
@@ -447,7 +470,7 @@
                   </button>` 
                 : `<div class="text-center py-2">
                     <p class="text-sm text-green-600 font-medium"><i class="fas fa-check-circle mr-1"></i> Evaluado</p>
-                    <p class="text-xs text-gray-500 mt-1">${new Date().toLocaleDateString('es-ES')}</p>
+                    <p class="text-xs text-gray-500 mt-1">${escapeHtml(atleta.fechaEvaluacion || '')}</p>
                   </div>`}
             </div>
           </div>
@@ -470,7 +493,7 @@
             <i class="fas fa-exclamation-triangle text-3xl text-red-500"></i>
           </div>
           <h3 class="text-xl font-medium text-gray-800 mb-2">Error al cargar datos</h3>
-          <p class="text-gray-600 mb-6">${message || 'Ocurrió un problema al obtener la lista de atletas.'}</p>
+          <p class="text-gray-600 mb-6">${escapeHtml(message || 'Ocurrió un problema al obtener la lista de atletas.')}</p>
           <button onclick="cargarAtletas()" class="btn-primary px-8">
             <i class="fas fa-sync-alt mr-2"></i> Intentar nuevamente
           </button>

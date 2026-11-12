@@ -160,11 +160,10 @@
   <!-- Hero Section -->
   <header class="hero-section">
     <div class="container mx-auto px-6 py-12 text-center">
-      <div class="container mx-auto px-6 py-12 text-center">
-        <div class="logo-container">
-  <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
-    <img src="ucv.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
-</div>
+      <div class="logo-container">
+        <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
+        <img src="ucv.png" alt="Universidad Central de Venezuela" class="logo" onclick="window.location.href='index.html'">
+      </div>
       <div class="max-w-3xl mx-auto">
         <h1 class="text-4xl md:text-5xl font-bold mb-6">
           <i class="fas fa-lock mr-3"></i>Acceso a Disciplina
@@ -303,28 +302,67 @@
       }
       
       // Configurar botón de acceso
-      document.getElementById('btnAcceder').addEventListener('click', function() {
-        const clave = document.getElementById('claveDisciplina').value.trim();
-        
+      const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec';
+      const campoClave = document.getElementById('claveDisciplina');
+      const btnAcceder = document.getElementById('btnAcceder');
+
+      if (!disciplinaId) {
+        document.getElementById('nombreDisciplina').textContent = 'Disciplina no especificada';
+      }
+
+      async function entrar() {
+        const clave = campoClave.value.trim();
+
         if (!clave) {
           alert('Por favor ingrese la clave de acceso');
+          campoClave.focus();
           return;
         }
-        
-        fetch(`https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec?tipo=verificarAccesoDisciplina&disciplinaId=${disciplinaId}&clave=${encodeURIComponent(clave)}`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'ok') {
-              sessionStorage.setItem(`disciplina_${disciplinaId}_access`, 'true');
-              window.location.href = `atletas.html?disciplinaId=${disciplinaId}&disciplinaNombre=${encodeURIComponent(disciplinaNombre || data.disciplina || 'Disciplina')}`;
-            } else {
-              alert('Clave incorrecta');
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            alert('Error al verificar la clave');
-          });
+
+        if (!disciplinaId) {
+          alert('No se especificó la disciplina. Vuelve al inicio y selecciona una.');
+          return;
+        }
+
+        btnAcceder.disabled = true;
+        const textoOriginal = btnAcceder.innerHTML;
+        btnAcceder.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...';
+
+        try {
+          const url = new URL(WEB_APP_URL);
+          url.searchParams.append('tipo', 'verificarAccesoDisciplina');
+          url.searchParams.append('disciplinaId', disciplinaId);
+          url.searchParams.append('clave', clave);
+
+          const respuesta = await fetch(url);
+          const data = await respuesta.json();
+
+          if (data.status === 'ok' && data.token) {
+            const nombre = data.disciplina || disciplinaNombre || 'Disciplina';
+
+            sessionStorage.setItem('disciplina_' + disciplinaId + '_token', data.token);
+            sessionStorage.setItem('disciplina_' + disciplinaId + '_nombre', nombre);
+
+            window.location.href = 'atletas.html?disciplinaId=' + encodeURIComponent(disciplinaId) +
+              '&disciplinaNombre=' + encodeURIComponent(nombre);
+            return;
+          }
+
+          alert(data.message || 'Clave incorrecta');
+          campoClave.value = '';
+          campoClave.focus();
+        } catch (error) {
+          console.error('Error:', error);
+          alert('Error al verificar la clave. Revisa tu conexión.');
+        } finally {
+          btnAcceder.disabled = false;
+          btnAcceder.innerHTML = textoOriginal;
+        }
+      }
+
+      btnAcceder.addEventListener('click', entrar);
+      campoClave.addEventListener('keydown', function (evento) {
+        if (evento.key === 'Enter') entrar();
       });
     });
   </script>

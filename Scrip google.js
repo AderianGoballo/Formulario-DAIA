@@ -1,7 +1,126 @@
-const SPREADSHEET_ID = '1K8qGO46yhwpM_qTupQfGW9TNnazmU3Y4N8Wt-QfWB5c';
-const ADMIN_KEY = 'ucv2023';
-const DISCIPLINAS_SHEET = "Disciplinas";
-const CACHE_EXPIRATION = 300; // 5 minutos en segundos
+/**
+ * DAIA — Backend (Google Apps Script)
+ *
+ * Despliegue: Extensiones -> Apps Script en la hoja, pegar este archivo,
+ * Implementar -> Nueva implementación -> Aplicación web
+ *   - Ejecutar como: Yo
+ *   - Quién tiene acceso: Cualquier usuario
+ *
+ * ANTES DE USARLO, configura la clave de administrador:
+ *   Configuración del proyecto -> Propiedades del script -> Añadir:
+ *   ADMIN_KEY = <tu clave larga y única>
+ *
+ * Nunca dejes la clave escrita en este archivo: es un repositorio público.
+ */
+
+var SPREADSHEET_ID = '1K8qGO46yhwpM_qTupQfGW9TNnazmU3Y4N8Wt-QfWB5c';
+
+var HOJAS = {
+  DISCIPLINAS: 'Disciplinas',
+  ATLETAS: 'Atletas',
+  RESPUESTAS: 'Respuestas',
+  FACULTADES: 'Facultades',
+  ESCUELAS: 'Escuelas',
+  ICONOS: 'IconosDisciplinas'
+};
+
+var CACHE_TTL = 300;               // 5 minutos
+var TOKEN_TTL = 6 * 60 * 60;       // 6 horas
+var PROPIEDAD_CLAVE_ADMIN = 'ADMIN_KEY';
+var LONGITUD_MINIMA_CLAVE = 6;
+
+/* =====================================================================
+ * Utilidades
+ * ===================================================================== */
+
+function responderJSON_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function error_(mensaje, codigo) {
+  var r = { status: 'error', message: mensaje || 'Error desconocido' };
+  if (codigo) r.code = codigo;
+  return r;
+}
+
+function hoja_(nombre) {
+  var hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(nombre);
+  if (!hoja) throw new Error('No existe la hoja "' + nombre + '" en la base de datos');
+  return hoja;
+}
+
+function filas_(nombre) {
+  return hoja_(nombre).getDataRange().getValues().slice(1);
+}
+
+/**
+ * Los nombres se guardaron históricamente con doble codificación
+ * ("F%C3%BAtbol"). Esto los devuelve legibles sin romper datos correctos.
+ */
+function normalizar_(valor) {
+  if (valor === null || valor === undefined) return '';
+  var texto = String(valor).trim();
+  if (/%[0-9A-Fa-f]{2}/.test(texto)) {
+    try {
+      texto = decodeURIComponent(texto.replace(/\+/g, ' '));
+    } catch (e) {
+      /* si no es una secuencia válida, se deja tal cual */
+    }
+  }
+  return texto.replace(/\s+/g, ' ').trim();
+}
+
+function claveAdminConfigurada_() {
+  try {
+    return PropertiesService.getScriptProperties().getProperty(PROPIEDAD_CLAVE_ADMIN) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function esAdmin_(clave) {
+  var real = claveAdminConfigurada_();
+  if (!real) return false;
+  return clave === real;
+}
+
+function invalidarCache_() {
+  try {
+    CacheService.getScriptCache().removeAll([
+      'disciplinas', 'facultades', 'escuelas', 'iconos', 'atletas'
+    ]);
+  } catch (e) {
+    /* la caché es opcional */
+  }
+}
+
+function cacheGet_(clave) {
+  try {
+    var datos = CacheService.getScriptCache().get(clave);
+    return datos ? JSON.parse(datos) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function cachePut_(clave, valor) {
+  try {
+    CacheService.getScriptCache().put(clave, JSON.stringify(valor), CACHE_TTL);
+  } catch (e) {
+    /* la caché es opcional */
+  }
+}
+
+function nuevoToken_() {
+  if (typeof Utilities !== 'undefined' && Utilities.getUuid) return Utilities.getUuid();
+  return 'tok-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+}
+
+/* =====================================================================
+ * Entrada HTTP
+ * ===================================================================== */
 
 function doOptions() {
   return ContentService.createTextOutput('')
@@ -9,101 +128,91 @@ function doOptions() {
 }
 
 function doGet(e) {
-  e = e || {};
-  e.parameter = e.parameter || {};
-  const tipo = e.parameter.tipo || '';
-  const cacheKey = `${tipo}_${JSON.stringify(e.parameter)}`;
-  
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get(cacheKey);
-  
-  if (cached) {
-    return ContentService.createTextOutput(cached)
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+  var p = (e && e.parameter) || {};
+  var tipo = p.tipo || '';
 
-  let respuesta;
-  
-  if (tipo === 'respuesta') {
-    respuesta = guardarRespuesta(e.parameter);
-  } else {
+  try {
     switch (tipo) {
-      case 'getDisciplinas': 
-        respuesta = getDisciplinas(); 
-        break;
-      case 'getAtletas': 
-        respuesta = getAtletas(e.parameter.disciplinaId); 
-        break;
-      case 'getFacultades': 
-        respuesta = getFacultades(); 
-        break;
-      case 'getEscuelas': 
-        respuesta = getEscuelas(); 
-        break;
-      case 'getDisciplinasConAtletas': 
-        respuesta = getDisciplinasConAtletas(); 
-        break;
+      case 'getDisciplinas':
+        return responderJSON_(getDisciplinas());
+
+      case 'getFacultades':
+        return responderJSON_(getFacultades());
+
+      case 'getEscuelas':
+        return responderJSON_(getEscuelas());
+
+      case 'getAtletas':
+        return responderJSON_(getAtletas(p.disciplinaId, p.token, p.adminKey));
+
       case 'verificarAccesoDisciplina':
-        respuesta = verificarAccesoDisciplina(e.parameter.disciplinaId, e.parameter.clave);
-        break;
+        return responderJSON_(verificarAccesoDisciplina(p.disciplinaId, p.clave));
+
+      case 'verificarAdmin':
+        return responderJSON_(verificarAdmin(p.clave));
+
+      case 'getDisciplinasAdmin':
+        return responderJSON_(getDisciplinasAdmin(p.adminKey));
+
       case 'getIconosDisciplinas':
-        respuesta = getIconosDisciplinas();
-        break;
+        return responderJSON_(getIconosDisciplinas());
+
       default:
-        respuesta = { 
-          status: 'error', 
-          message: 'Parámetro GET "tipo" inválido o ausente' 
-        };
+        return responderJSON_(error_('Parámetro GET "tipo" inválido o ausente'));
     }
+  } catch (err) {
+    return responderJSON_(error_(err.message));
   }
-  
-  const response = ContentService.createTextOutput(JSON.stringify(respuesta))
-    .setMimeType(ContentService.MimeType.JSON);
-  
-  if (tipo !== 'respuesta' && respuesta.status === 'ok') {
-    cache.put(cacheKey, JSON.stringify(respuesta), CACHE_EXPIRATION);
-  }
-  
-  return response;
 }
 
 function doPost(e) {
-  let datos = {};
-  
+  var datos = {};
+
   try {
-    if (e.postData.type === 'application/json') {
-      datos = JSON.parse(e.postData.contents);
-    } else if (e.postData.type === 'application/x-www-form-urlencoded') {
-      const params = e.postData.contents.split('&');
-      params.forEach(param => {
-        const [key, value] = param.split('=');
-        datos[decodeURIComponent(key)] = decodeURIComponent(value || '');
-      });
-    } else {
-      throw new Error('Tipo de contenido no soportado: ' + e.postData.type);
+    if (e && e.parameter && Object.keys(e.parameter).length > 0) {
+      // Apps Script ya decodifica los formularios urlencoded en e.parameter
+      datos = e.parameter;
+    } else if (e && e.postData) {
+      if (/application\/json/i.test(e.postData.type || '')) {
+        datos = JSON.parse(e.postData.contents);
+      } else {
+        datos = {};
+        String(e.postData.contents || '').split('&').forEach(function (par) {
+          if (!par) return;
+          var i = par.indexOf('=');
+          var k = i === -1 ? par : par.slice(0, i);
+          var v = i === -1 ? '' : par.slice(i + 1);
+          datos[decodeURIComponent(k)] = decodeURIComponent(v.replace(/\+/g, ' '));
+        });
+      }
     }
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'error',
-      message: 'Error procesando los datos: ' + error.message
-    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return responderJSON_(error_('Error procesando los datos: ' + err.message));
   }
 
-  if (datos.tipo === 'respuesta') {
-    return ContentService.createTextOutput(JSON.stringify(guardarRespuesta(datos)))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+  var tipo = datos.tipo || '';
 
-  if (!datos.adminKey || datos.adminKey !== ADMIN_KEY) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'error',
-      message: 'Acceso no autorizado. Clave admin inválida.'
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  let respuesta;
   try {
-    switch (datos.tipo) {
+    // Respuesta de un atleta: requiere token de su disciplina
+    if (tipo === 'respuesta') {
+      return responderJSON_(guardarRespuesta(datos));
+    }
+
+    // Inicio de sesión del administrador
+    if (tipo === 'verificarAdmin') {
+      return responderJSON_(verificarAdmin(datos.clave));
+    }
+
+    if (!esAdmin_(datos.adminKey)) {
+      return responderJSON_(error_('Acceso no autorizado. Clave admin inválida.', 'unauthorized'));
+    }
+
+    var respuesta;
+
+    switch (tipo) {
+      case 'cambiarClaveAdmin':
+        respuesta = cambiarClaveAdmin(datos.claveActual, datos.nuevaClave);
+        break;
       case 'nueva-disciplina':
         respuesta = agregarDisciplina(datos.nombre);
         break;
@@ -147,678 +256,543 @@ function doPost(e) {
         respuesta = actualizarIconoDisciplina(datos.id, datos.icono);
         break;
       default:
-        respuesta = { 
-          status: 'error', 
-          message: 'Operación no soportada: ' + (datos.tipo || 'ninguna') 
-        };
+        respuesta = error_('Operación no soportada: ' + (tipo || 'ninguna'));
     }
-  } catch (error) {
-    respuesta = {
-      status: 'error',
-      message: 'Error procesando la solicitud: ' + error.message
-    };
-  }
-  
-  if (respuesta.status === 'ok') {
-    CacheService.getScriptCache().removeAll([
-      'getDisciplinas_', 
-      'getAtletas_', 
-      'getFacultades_', 
-      'getEscuelas_',
-      'getDisciplinasConAtletas_',
-      'getIconosDisciplinas_'
-    ]);
-  }
-  
-  return ContentService.createTextOutput(JSON.stringify(respuesta))
-    .setMimeType(ContentService.MimeType.JSON);
-}
 
-function getDisciplinas() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get('disciplinas');
-  
-  if (cached) {
-    return JSON.parse(cached);
-  }
-  
-  const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(DISCIPLINAS_SHEET);
-  const rows = hoja.getDataRange().getValues().slice(1);
-  const result = { 
-    status: 'ok', 
-    disciplinas: rows.map(r => ({ 
-      id: r[0], 
-      nombre: r[1],
-      clave: r[2] || ''
-    })) 
-  };
-  
-  cache.put('disciplinas', JSON.stringify(result), CACHE_EXPIRATION);
-  return result;
-}
-
-function verificarAccesoDisciplina(disciplinaId, clave) {
-  const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(DISCIPLINAS_SHEET);
-  const rows = hoja.getDataRange().getValues();
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] == disciplinaId && rows[i][2] == clave) {
-      return { status: 'ok', disciplina: rows[i][1] };
+    if (respuesta && respuesta.status === 'ok') {
+      invalidarCache_();
     }
+
+    return responderJSON_(respuesta);
+  } catch (err) {
+    return responderJSON_(error_('Error procesando la solicitud: ' + err.message));
   }
-  return { status: 'error', message: 'Clave incorrecta' };
 }
 
-function actualizarClaveDisciplina(id, clave) {
-  const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(DISCIPLINAS_SHEET);
-  const rows = hoja.getDataRange().getValues();
-  
-  for (let i = 1; i < rows.length; i++) {
-    if (rows[i][0] == id) {
-      hoja.getRange(i + 1, 3).setValue(clave);
-      CacheService.getScriptCache().remove('disciplinas');
-      return { status: 'ok' };
-    }
+/* =====================================================================
+ * Autenticación
+ * ===================================================================== */
+
+function verificarAdmin(clave) {
+  if (!claveAdminConfigurada_()) {
+    return error_('El administrador aún no configuró ADMIN_KEY en las propiedades del script.');
   }
-  return { status: 'error', message: 'Disciplina no encontrada' };
+  if (!clave) return error_('Clave requerida');
+  return esAdmin_(clave) ? { status: 'ok' } : error_('Clave incorrecta');
 }
 
-function getAtletas(disciplinaId) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const hojaAtletas = ss.getSheetByName('Atletas');
-  const hojaRespuestas = ss.getSheetByName('Respuestas');
-  
-  const atletasData = hojaAtletas.getDataRange().getValues().slice(1);
-  const respuestasData = hojaRespuestas.getDataRange().getValues().slice(1);
-  const atletasRespondidos = new Set(respuestasData.map(r => r[13] || r[1]));
-  
-  const atletasFiltrados = disciplinaId 
-    ? atletasData.filter(a => a[2] == disciplinaId)
-    : atletasData;
-  
-  return {
-    status: 'ok',
-    atletas: atletasFiltrados.map(r => ({
-      id: r[0],
-      nombre: r[1],
-      disciplinaId: r[2],
-      facultadId: r[3],
-      escuelaId: r[4],
-      respondido: atletasRespondidos.has(r[0]) || atletasRespondidos.has(r[1])
-    }))
-  };
-}
+function cambiarClaveAdmin(claveActual, nuevaClave) {
+  if (!esAdmin_(claveActual)) return error_('La clave actual no es correcta');
 
-function getFacultades() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get('facultades');
-  
-  if (cached) {
-    return JSON.parse(cached);
+  var nueva = String(nuevaClave || '').trim();
+  if (nueva.length < LONGITUD_MINIMA_CLAVE) {
+    return error_('La nueva clave debe tener al menos ' + LONGITUD_MINIMA_CLAVE + ' caracteres');
   }
-  
-  const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Facultades');
-  const rows = hoja.getDataRange().getValues().slice(1);
-  const result = { 
-    status: 'ok', 
-    facultades: rows.map(r => ({ 
-      id: r[0], 
-      nombre: r[1] 
-    })) 
-  };
-  
-  cache.put('facultades', JSON.stringify(result), CACHE_EXPIRATION);
-  return result;
-}
-
-function getEscuelas() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get('escuelas');
-  
-  if (cached) {
-    return JSON.parse(cached);
-  }
-  
-  const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Escuelas');
-  const rows = hoja.getDataRange().getValues().slice(1);
-  const result = {
-    status: 'ok',
-    escuelas: rows.map(r => ({
-      id: r[0],
-      nombre: r[1],
-      facultadId: r[2]
-    }))
-  };
-  
-  cache.put('escuelas', JSON.stringify(result), CACHE_EXPIRATION);
-  return result;
-}
-
-function getDisciplinasConAtletas() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get('disciplinas_con_atletas');
-  
-  if (cached) {
-    return JSON.parse(cached);
-  }
-  
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const hojaDisciplinas = ss.getSheetByName('Disciplinas');
-  const hojaAtletas = ss.getSheetByName('Atletas');
-  const hojaRespuestas = ss.getSheetByName('Respuestas');
-
-  const respuestasData = hojaRespuestas.getDataRange().getValues().slice(1);
-  const atletasRespondidos = new Set(respuestasData.map(r => r[13] || r[1]));
-
-  const disciplinasData = hojaDisciplinas.getDataRange().getValues().slice(1);
-  const atletasData = hojaAtletas.getDataRange().getValues().slice(1);
-
-  const atletasPorDisciplina = {};
-  atletasData.forEach(r => {
-    const atleta = { 
-      id: r[0], 
-      nombre: r[1], 
-      disciplinaId: r[2], 
-      facultadId: r[3], 
-      escuelaId: r[4],
-      respondido: atletasRespondidos.has(r[0]) || atletasRespondidos.has(r[1])
-    };
-    if (!atletasPorDisciplina[atleta.disciplinaId]) {
-      atletasPorDisciplina[atleta.disciplinaId] = [];
-    }
-    atletasPorDisciplina[atleta.disciplinaId].push(atleta);
-  });
-
-  const resultado = disciplinasData.map(r => ({
-    id: r[0],
-    nombre: r[1],
-    atletas: atletasPorDisciplina[r[0]] || []
-  }));
-
-  const result = { 
-    status: 'ok', 
-    disciplinas: resultado 
-  };
-  
-  cache.put('disciplinas_con_atletas', JSON.stringify(result), CACHE_EXPIRATION);
-  return result;
-}
-
-function getIconosDisciplinas() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName('IconosDisciplinas');
-  
-  if (!sheet) {
-    // Si la hoja no existe, crear una nueva con datos básicos
-    const newSheet = ss.insertSheet('IconosDisciplinas');
-    newSheet.appendRow(['disciplinaId', 'icono']);
-    return { status: 'ok', iconos: [] };
-  }
-  
-  const data = sheet.getDataRange().getValues();
-  const headers = data.shift();
-  
-  // Verificar si la hoja tiene la estructura correcta
-  if (!headers.includes('disciplinaId') || !headers.includes('icono')) {
-    return { status: 'error', message: 'Estructura de hoja IconosDisciplinas incorrecta' };
+  if (nueva === claveActual) {
+    return error_('La nueva clave debe ser distinta de la actual');
   }
 
-  const iconos = data.map(row => {
-    return {
-      disciplinaId: row[headers.indexOf('disciplinaId')],
-      icono: row[headers.indexOf('icono')] || 'fa-trophy' // Valor por defecto
-    };
-  });
-
-  return { status: 'ok', iconos: iconos };
-}
-
-function actualizarIconoDisciplina(disciplinaId, icono) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let sheet = ss.getSheetByName('IconosDisciplinas');
-  
-  // Si la hoja no existe, créala
-  if (!sheet) {
-    sheet = ss.insertSheet('IconosDisciplinas');
-    sheet.appendRow(['disciplinaId', 'icono']);
-  }
-  
-  const data = sheet.getDataRange().getValues();
-  const headers = data.shift();
-  
-  const disciplinaIdCol = headers.indexOf('disciplinaId');
-  const iconoCol = headers.indexOf('icono');
-  
-  // Buscar y actualizar
-  let updated = false;
-  for (let i = 0; i < data.length; i++) {
-    if (data[i][disciplinaIdCol] == disciplinaId) {
-      sheet.getRange(i + 2, iconoCol + 1).setValue(icono);
-      updated = true;
-      break;
-    }
-  }
-  
-  // Si no existe, agregar nuevo registro
-  if (!updated) {
-    sheet.appendRow([disciplinaId, icono]);
-  }
-  
-  // Limpiar caché
-  CacheService.getScriptCache().remove('getIconosDisciplinas_');
-  
+  PropertiesService.getScriptProperties().setProperty(PROPIEDAD_CLAVE_ADMIN, nueva);
   return { status: 'ok' };
 }
 
+function verificarAccesoDisciplina(disciplinaId, clave) {
+  if (!disciplinaId) return error_('Disciplina no especificada');
+
+  var filas = filas_(HOJAS.DISCIPLINAS);
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(disciplinaId)) {
+      var esperada = normalizar_(filas[i][2]);
+      if (esperada && String(clave || '').trim() === esperada) {
+        var token = nuevoToken_();
+        try {
+          CacheService.getScriptCache().put('tok_' + token, String(disciplinaId), TOKEN_TTL);
+        } catch (e) {
+          return error_('No se pudo crear la sesión de acceso');
+        }
+        return {
+          status: 'ok',
+          token: token,
+          disciplina: normalizar_(filas[i][1])
+        };
+      }
+      return error_('Clave incorrecta');
+    }
+  }
+  return error_('Disciplina no encontrada');
+}
+
+function tokenValidoPara_(token, disciplinaId) {
+  if (!token) return false;
+  try {
+    var guardado = CacheService.getScriptCache().get('tok_' + token);
+    if (!guardado) return false;
+    return String(guardado) === String(disciplinaId);
+  } catch (e) {
+    return false;
+  }
+}
+
+/* =====================================================================
+ * Lecturas
+ * ===================================================================== */
+
+function getDisciplinas() {
+  var cache = cacheGet_('disciplinas');
+  if (cache) return cache;
+
+  var iconos = mapaIconos_();
+  var disciplinas = filas_(HOJAS.DISCIPLINAS).map(function (r) {
+    return {
+      id: r[0],
+      nombre: normalizar_(r[1]),
+      icono: iconos[String(r[0])] || 'fa-trophy',
+      requiereClave: normalizar_(r[2]) !== ''
+    };
+  });
+
+  var resultado = { status: 'ok', disciplinas: disciplinas };
+  cachePut_('disciplinas', resultado);
+  return resultado;
+}
+
+/** Solo para el panel: incluye la clave de cada disciplina. */
+function getDisciplinasAdmin(adminKey) {
+  if (!esAdmin_(adminKey)) return error_('Acceso no autorizado', 'unauthorized');
+
+  var disciplinas = filas_(HOJAS.DISCIPLINAS).map(function (r) {
+    return {
+      id: r[0],
+      nombre: normalizar_(r[1]),
+      clave: normalizar_(r[2])
+    };
+  });
+
+  return { status: 'ok', disciplinas: disciplinas };
+}
+
+function getFacultades() {
+  var cache = cacheGet_('facultades');
+  if (cache) return cache;
+
+  var resultado = {
+    status: 'ok',
+    facultades: filas_(HOJAS.FACULTADES).map(function (r) {
+      return { id: r[0], nombre: normalizar_(r[1]) };
+    })
+  };
+
+  cachePut_('facultades', resultado);
+  return resultado;
+}
+
+function getEscuelas() {
+  var cache = cacheGet_('escuelas');
+  if (cache) return cache;
+
+  var resultado = {
+    status: 'ok',
+    escuelas: filas_(HOJAS.ESCUELAS).map(function (r) {
+      return { id: r[0], nombre: normalizar_(r[1]), facultadId: r[2] };
+    })
+  };
+
+  cachePut_('escuelas', resultado);
+  return resultado;
+}
+
+function mapaIconos_() {
+  var hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(HOJAS.ICONOS);
+  var mapa = {};
+  if (!hoja) return mapa;
+
+  var datos = hoja.getDataRange().getValues();
+  if (!datos.length) return mapa;
+
+  var cabeceras = datos[0].map(function (h) { return String(h).trim().toLowerCase(); });
+  var colId = cabeceras.indexOf('disciplinaid');
+  var colIcono = cabeceras.indexOf('icono');
+  if (colId === -1 || colIcono === -1) return mapa;
+
+  for (var i = 1; i < datos.length; i++) {
+    var id = datos[i][colId];
+    if (id !== '' && id !== null && id !== undefined) {
+      mapa[String(id)] = String(datos[i][colIcono] || '').trim() || 'fa-trophy';
+    }
+  }
+  return mapa;
+}
+
+function getIconosDisciplinas() {
+  var cache = cacheGet_('iconos');
+  if (cache) return cache;
+
+  var mapa = mapaIconos_();
+  var resultado = {
+    status: 'ok',
+    iconos: Object.keys(mapa).map(function (id) {
+      return { disciplinaId: id, icono: mapa[id] };
+    })
+  };
+
+  cachePut_('iconos', resultado);
+  return resultado;
+}
+
+/**
+ * Atletas de una disciplina.
+ * Autoriza con el token de la disciplina o con la clave de administrador.
+ */
+function getAtletas(disciplinaId, token, adminKey) {
+  if (!esAdmin_(adminKey) && !tokenValidoPara_(token, disciplinaId)) {
+    return error_('Acceso no autorizado. Vuelve a introducir la clave de la disciplina.', 'unauthorized');
+  }
+
+  var atletasData = filas_(HOJAS.ATLETAS);
+  var respuestas = filas_(HOJAS.RESPUESTAS);
+
+  var porId = {};
+  var porNombreSinId = {};
+
+  respuestas.forEach(function (r) {
+    var fecha = r[0];
+    var nombre = normalizar_(r[1]).toLowerCase();
+    var id = r[13];
+
+    if (id !== '' && id !== null && id !== undefined) {
+      if (!porId[String(id)] || fecha > porId[String(id)]) porId[String(id)] = fecha;
+    } else if (nombre) {
+      // Solo las respuestas antiguas sin ID obligan a comparar por nombre
+      if (!porNombreSinId[nombre] || fecha > porNombreSinId[nombre]) porNombreSinId[nombre] = fecha;
+    }
+  });
+
+  var lista = atletasData
+    .filter(function (r) {
+      return !disciplinaId || String(r[2]) === String(disciplinaId);
+    })
+    .map(function (r) {
+      var id = r[0];
+      var nombre = normalizar_(r[1]);
+
+      var fechaEvaluacion = null;
+      if (id !== '' && id !== null && id !== undefined) {
+        fechaEvaluacion = porId[String(id)] || null;
+      } else {
+        fechaEvaluacion = porNombreSinId[nombre.toLowerCase()] || null;
+      }
+
+      return {
+        id: id,
+        nombre: nombre,
+        disciplinaId: r[2],
+        facultadId: r[3],
+        escuelaId: r[4],
+        respondido: !!fechaEvaluacion,
+        fechaEvaluacion: fechaEvaluacion ? formatearFecha_(fechaEvaluacion) : null
+      };
+    });
+
+  return { status: 'ok', atletas: lista };
+}
+
+function formatearFecha_(valor) {
+  if (!valor) return '';
+  if (Object.prototype.toString.call(valor) === '[object Date]') {
+    var d = valor;
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+  return String(valor);
+}
+
+/* =====================================================================
+ * Escritura: respuestas del cuestionario
+ * ===================================================================== */
+
 function guardarRespuesta(d) {
   if (!d || !d.atleta || !d.atletaId) {
-    return { 
-      result: 'error', 
-      message: 'Falta campo atleta o ID' 
-    };
+    return { result: 'error', message: 'Falta el nombre o el ID del atleta' };
   }
-  
+
+  var disciplinaId = d.disciplinaId || '';
+  if (!tokenValidoPara_(d.token, disciplinaId)) {
+    return { result: 'error', message: 'Sesión de disciplina no válida o expirada', code: 'unauthorized' };
+  }
+
+  var competiciones = d.asistenciaCompeticiones;
+  if (competiciones === undefined) competiciones = d.asistenciacompeticiones;
+  if (competiciones === undefined) competiciones = d.asistenciaGeneral;
+
   try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Respuestas');
-    hoja.appendRow([
+    hoja_(HOJAS.RESPUESTAS).appendRow([
       new Date(),
-      d.atleta,
-      d.disciplina || '',
+      normalizar_(d.atleta),
+      normalizar_(d.disciplina),
       d.estadoFisico || '',
       d.estadoTecnico || '',
       d.estadoTactico || '',
       d.actitud || '',
       d.asistencia || '',
-      d.asistenciaGeneral || '',
+      competiciones || '',
       d.observaciones || '',
-      d.facultad || '',
-      d.escuela || '',
+      normalizar_(d.facultad),
+      normalizar_(d.escuela),
       d.semestre || '',
       d.atletaId
     ]);
-    
-    // Limpiar cache relevante
-    CacheService.getScriptCache().removeAll([
-      'getAtletas_',
-      'getDisciplinasConAtletas_'
-    ]);
-    
-    return { 
-      result: 'success',
-      atletaId: d.atletaId
-    };
-  } catch (error) {
-    return {
-      result: 'error',
-      message: 'Error guardando respuesta: ' + error.message
-    };
+
+    invalidarCache_();
+    return { result: 'success', atletaId: d.atletaId };
+  } catch (err) {
+    return { result: 'error', message: 'Error guardando la respuesta: ' + err.message };
   }
 }
 
+/* =====================================================================
+ * CRUD: disciplinas
+ * ===================================================================== */
+
 function agregarDisciplina(nombre) {
-  if (!nombre) return { 
-    status: 'error', 
-    message: 'Nombre vacío' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Disciplinas');
-    const rows = hoja.getDataRange().getValues();
-    const ultimoId = rows.length > 1 ? Math.max(...rows.slice(1).map(r => r[0])) : 0;
-    const nuevoId = ultimoId + 1;
-    hoja.appendRow([nuevoId, nombre, '']); // Clave vacía por defecto
-    CacheService.getScriptCache().remove('disciplinas');
-    return { 
-      status: 'ok', 
-      id: nuevoId 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error agregando disciplina: ' + error.message
-    };
-  }
+  var limpio = normalizar_(nombre);
+  if (!limpio) return error_('Nombre vacío');
+
+  var hoja = hoja_(HOJAS.DISCIPLINAS);
+  var filas = hoja.getDataRange().getValues().slice(1);
+  var ultimoId = filas.length ? Math.max.apply(null, filas.map(function (r) { return Number(r[0]) || 0; })) : 0;
+  var nuevoId = ultimoId + 1;
+
+  hoja.appendRow([nuevoId, limpio, '']);
+  return { status: 'ok', id: nuevoId };
 }
 
 function editarDisciplina(id, nombre) {
-  if (!id || !nombre) return { 
-    status: 'error', 
-    message: 'Faltan datos' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Disciplinas');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        hoja.getRange(i + 1, 2).setValue(nombre);
-        CacheService.getScriptCache().remove('disciplinas');
-        return { 
-          status: 'ok' 
-        };
-      }
+  var limpio = normalizar_(nombre);
+  if (!id || !limpio) return error_('Faltan datos');
+
+  var hoja = hoja_(HOJAS.DISCIPLINAS);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.getRange(i + 1, 2).setValue(limpio);
+      return { status: 'ok' };
     }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error editando disciplina: ' + error.message
-    };
   }
+  return error_('ID no encontrado');
 }
 
 function eliminarDisciplina(id) {
-  if (!id) return { 
-    status: 'error', 
-    message: 'ID requerido' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Disciplinas');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        hoja.deleteRow(i + 1);
-        CacheService.getScriptCache().removeAll(['disciplinas', 'getDisciplinasConAtletas']);
-        return { 
-          status: 'ok' 
-        };
-      }
+  if (!id) return error_('ID requerido');
+
+  var hoja = hoja_(HOJAS.DISCIPLINAS);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.deleteRow(i + 1);
+      return { status: 'ok' };
     }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error eliminando disciplina: ' + error.message
-    };
   }
+  return error_('ID no encontrado');
 }
 
+function actualizarClaveDisciplina(id, clave) {
+  if (!id) return error_('ID requerido');
+
+  var hoja = hoja_(HOJAS.DISCIPLINAS);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      var limpia = String(clave || '').trim();
+      if (limpia && limpia.length < 4) {
+        return error_('La clave de la disciplina debe tener al menos 4 caracteres');
+      }
+      hoja.getRange(i + 1, 3).setValue(limpia);
+      return { status: 'ok' };
+    }
+  }
+  return error_('Disciplina no encontrada');
+}
+
+function actualizarIconoDisciplina(disciplinaId, icono) {
+  if (!disciplinaId) return error_('Disciplina requerida');
+
+  var nombre = String(icono || '').trim();
+  if (!nombre) return error_('Selecciona un ícono');
+
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = ss.getSheetByName(HOJAS.ICONOS);
+
+  if (!hoja) {
+    hoja = ss.insertSheet(HOJAS.ICONOS);
+    hoja.appendRow(['disciplinaId', 'icono']);
+  }
+
+  var datos = hoja.getDataRange().getValues();
+  var cabeceras = datos[0].map(function (h) { return String(h).trim().toLowerCase(); });
+  var colId = cabeceras.indexOf('disciplinaid');
+  var colIcono = cabeceras.indexOf('icono');
+
+  if (colId === -1 || colIcono === -1) {
+    return error_('La hoja IconosDisciplinas no tiene las columnas disciplinaId e icono');
+  }
+
+  for (var i = 1; i < datos.length; i++) {
+    if (String(datos[i][colId]) === String(disciplinaId)) {
+      hoja.getRange(i + 1, colIcono + 1).setValue(nombre);
+      return { status: 'ok' };
+    }
+  }
+
+  hoja.appendRow([disciplinaId, nombre]);
+  return { status: 'ok' };
+}
+
+/* =====================================================================
+ * CRUD: atletas
+ * ===================================================================== */
+
 function agregarAtleta(nombre, disciplinaId, facultadId, escuelaId) {
-  if (!nombre || !disciplinaId || !facultadId || !escuelaId) {
-    return { 
-      status: 'error', 
-      message: 'Faltan datos' 
-    };
-  }
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Atletas');
-    const rows = hoja.getDataRange().getValues();
-    const ultimoId = rows.length > 1 ? Math.max(...rows.slice(1).map(r => r[0])) : 0;
-    const nuevoId = ultimoId + 1;
-    hoja.appendRow([nuevoId, nombre, disciplinaId, facultadId, escuelaId]);
-    CacheService.getScriptCache().removeAll(['getAtletas_', 'getDisciplinasConAtletas_']);
-    return { 
-      status: 'ok', 
-      id: nuevoId 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error agregando atleta: ' + error.message
-    };
-  }
+  var limpio = normalizar_(nombre);
+  if (!limpio || !disciplinaId || !facultadId || !escuelaId) return error_('Faltan datos');
+
+  var hoja = hoja_(HOJAS.ATLETAS);
+  var filas = hoja.getDataRange().getValues().slice(1);
+  var ultimoId = filas.length ? Math.max.apply(null, filas.map(function (r) { return Number(r[0]) || 0; })) : 0;
+  var nuevoId = ultimoId + 1;
+
+  hoja.appendRow([nuevoId, limpio, disciplinaId, facultadId, escuelaId]);
+  return { status: 'ok', id: nuevoId };
 }
 
 function editarAtleta(id, nombre, disciplinaId, facultadId, escuelaId) {
-  if (!id || !nombre || !disciplinaId || !facultadId || !escuelaId) {
-    return { 
-      status: 'error', 
-      message: 'Faltan datos' 
-    };
-  }
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Atletas');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        hoja.getRange(i + 1, 2).setValue(nombre);
-        hoja.getRange(i + 1, 3).setValue(disciplinaId);
-        hoja.getRange(i + 1, 4).setValue(facultadId);
-        hoja.getRange(i + 1, 5).setValue(escuelaId);
-        CacheService.getScriptCache().removeAll(['getAtletas_', 'getDisciplinasConAtletas_']);
-        return { 
-          status: 'ok' 
-        };
-      }
+  var limpio = normalizar_(nombre);
+  if (!id || !limpio || !disciplinaId || !facultadId || !escuelaId) return error_('Faltan datos');
+
+  var hoja = hoja_(HOJAS.ATLETAS);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.getRange(i + 1, 2, 1, 4).setValues([[limpio, disciplinaId, facultadId, escuelaId]]);
+      return { status: 'ok' };
     }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error editando atleta: ' + error.message
-    };
   }
+  return error_('ID no encontrado');
 }
 
 function eliminarAtleta(id) {
-  if (!id) return { 
-    status: 'error', 
-    message: 'ID requerido' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Atletas');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        hoja.deleteRow(i + 1);
-        CacheService.getScriptCache().removeAll(['getAtletas_', 'getDisciplinasConAtletas_']);
-        return { 
-          status: 'ok' 
-        };
-      }
+  if (!id) return error_('ID requerido');
+
+  var hoja = hoja_(HOJAS.ATLETAS);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.deleteRow(i + 1);
+      return { status: 'ok' };
     }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error eliminando atleta: ' + error.message
-    };
   }
+  return error_('ID no encontrado');
 }
 
+/* =====================================================================
+ * CRUD: facultades
+ * ===================================================================== */
+
 function agregarFacultad(nombre) {
-  if (!nombre) return { 
-    status: 'error', 
-    message: 'Nombre vacío' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Facultades');
-    const rows = hoja.getDataRange().getValues();
-    const ultimoId = rows.length > 1 ? Math.max(...rows.slice(1).map(r => r[0])) : 0;
-    const nuevoId = ultimoId + 1;
-    hoja.appendRow([nuevoId, nombre]);
-    CacheService.getScriptCache().removeAll(['facultades', 'escuelas', 'getDisciplinasConAtletas_']);
-    return { 
-      status: 'ok', 
-      id: nuevoId 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error agregando facultad: ' + error.message
-    };
-  }
+  var limpio = normalizar_(nombre);
+  if (!limpio) return error_('Nombre vacío');
+
+  var hoja = hoja_(HOJAS.FACULTADES);
+  var filas = hoja.getDataRange().getValues().slice(1);
+  var ultimoId = filas.length ? Math.max.apply(null, filas.map(function (r) { return Number(r[0]) || 0; })) : 0;
+  var nuevoId = ultimoId + 1;
+
+  hoja.appendRow([nuevoId, limpio]);
+  return { status: 'ok', id: nuevoId };
 }
 
 function editarFacultad(id, nombre) {
-  if (!id || !nombre) return { 
-    status: 'error', 
-    message: 'Faltan datos' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Facultades');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        hoja.getRange(i + 1, 2).setValue(nombre);
-        CacheService.getScriptCache().removeAll(['facultades', 'escuelas', 'getDisciplinasConAtletas_']);
-        return { 
-          status: 'ok' 
-        };
-      }
+  var limpio = normalizar_(nombre);
+  if (!id || !limpio) return error_('Faltan datos');
+
+  var hoja = hoja_(HOJAS.FACULTADES);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.getRange(i + 1, 2).setValue(limpio);
+      return { status: 'ok' };
     }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error editando facultad: ' + error.message
-    };
   }
+  return error_('ID no encontrado');
 }
 
 function eliminarFacultad(id) {
-  if (!id) return { 
-    status: 'error', 
-    message: 'ID requerido' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Facultades');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        // Verificar si hay escuelas asociadas
-        const escuelas = getEscuelas().escuelas || [];
-        const escuelasAsociadas = escuelas.filter(e => e.facultadId == id);
-        if (escuelasAsociadas.length > 0) {
-          return {
-            status: 'error',
-            message: 'No se puede eliminar la facultad porque tiene escuelas asociadas'
-          };
-        }
-        
-        hoja.deleteRow(i + 1);
-        CacheService.getScriptCache().removeAll(['facultades', 'escuelas', 'getDisciplinasConAtletas_']);
-        return { 
-          status: 'ok' 
-        };
-      }
-    }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error eliminando facultad: ' + error.message
-    };
+  if (!id) return error_('ID requerido');
+
+  var escuelas = filas_(HOJAS.ESCUELAS);
+  var asociadas = escuelas.filter(function (e) { return String(e[2]) === String(id); });
+  if (asociadas.length > 0) {
+    return error_('No se puede eliminar la facultad porque tiene escuelas asociadas');
   }
+
+  var hoja = hoja_(HOJAS.FACULTADES);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.deleteRow(i + 1);
+      return { status: 'ok' };
+    }
+  }
+  return error_('ID no encontrado');
 }
 
+/* =====================================================================
+ * CRUD: escuelas
+ * ===================================================================== */
+
 function agregarEscuela(nombre, facultadId) {
-  if (!nombre || !facultadId) return { 
-    status: 'error', 
-    message: 'Faltan datos' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Escuelas');
-    const rows = hoja.getDataRange().getValues();
-    const ultimoId = rows.length > 1 ? Math.max(...rows.slice(1).map(r => r[0])) : 0;
-    const nuevoId = ultimoId + 1;
-    hoja.appendRow([nuevoId, nombre, facultadId]);
-    CacheService.getScriptCache().removeAll(['escuelas', 'getDisciplinasConAtletas_']);
-    return { 
-      status: 'ok', 
-      id: nuevoId 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error agregando escuela: ' + error.message
-    };
-  }
+  var limpio = normalizar_(nombre);
+  if (!limpio || !facultadId) return error_('Faltan datos');
+
+  var hoja = hoja_(HOJAS.ESCUELAS);
+  var filas = hoja.getDataRange().getValues().slice(1);
+  var ultimoId = filas.length ? Math.max.apply(null, filas.map(function (r) { return Number(r[0]) || 0; })) : 0;
+  var nuevoId = ultimoId + 1;
+
+  hoja.appendRow([nuevoId, limpio, facultadId]);
+  return { status: 'ok', id: nuevoId };
 }
 
 function editarEscuela(id, nombre, facultadId) {
-  if (!id || !nombre || !facultadId) return { 
-    status: 'error', 
-    message: 'Faltan datos' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Escuelas');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        hoja.getRange(i + 1, 2).setValue(nombre);
-        hoja.getRange(i + 1, 3).setValue(facultadId);
-        CacheService.getScriptCache().removeAll(['escuelas', 'getDisciplinasConAtletas_']);
-        return { 
-          status: 'ok' 
-        };
-      }
+  var limpio = normalizar_(nombre);
+  if (!id || !limpio || !facultadId) return error_('Faltan datos');
+
+  var hoja = hoja_(HOJAS.ESCUELAS);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.getRange(i + 1, 2, 1, 2).setValues([[limpio, facultadId]]);
+      return { status: 'ok' };
     }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error editando escuela: ' + error.message
-    };
   }
+  return error_('ID no encontrado');
 }
 
 function eliminarEscuela(id) {
-  if (!id) return { 
-    status: 'error', 
-    message: 'ID requerido' 
-  };
-  
-  try {
-    const hoja = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Escuelas');
-    const rows = hoja.getDataRange().getValues();
-    for (let i = 1; i < rows.length; i++) {
-      if (rows[i][0] == id) {
-        // Verificar si hay atletas asociados
-        const atletas = getAtletas().atletas || [];
-        const atletasAsociados = atletas.filter(a => a.escuelaId == id);
-        if (atletasAsociados.length > 0) {
-          return {
-            status: 'error',
-            message: 'No se puede eliminar la escuela porque tiene atletas asociados'
-          };
-        }
-        
-        hoja.deleteRow(i + 1);
-        CacheService.getScriptCache().removeAll(['escuelas', 'getDisciplinasConAtletas_']);
-        return { 
-          status: 'ok' 
-        };
-      }
-    }
-    return { 
-      status: 'error', 
-      message: 'ID no encontrado' 
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      message: 'Error eliminando escuela: ' + error.message
-    };
+  if (!id) return error_('ID requerido');
+
+  var atletas = filas_(HOJAS.ATLETAS);
+  var asociados = atletas.filter(function (a) { return String(a[4]) === String(id); });
+  if (asociados.length > 0) {
+    return error_('No se puede eliminar la escuela porque tiene atletas asociados');
   }
+
+  var hoja = hoja_(HOJAS.ESCUELAS);
+  var filas = hoja.getDataRange().getValues();
+  for (var i = 1; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      hoja.deleteRow(i + 1);
+      return { status: 'ok' };
+    }
+  }
+  return error_('ID no encontrado');
 }
