@@ -439,6 +439,15 @@ function renderizarAtletas(atletas, disciplinaId, disciplinaNombre) {
 
   contenedor.innerHTML = '';
 
+  if (!atletas.length) {
+    contenedor.innerHTML =
+      '<div class="vacio" style="grid-column: 1 / -1;">' +
+        '<p class="seccion-sub">Todavía no hay atletas registrados en esta disciplina.</p>' +
+        '<p class="seccion-sub">El administrador puede añadirlos desde el panel.</p>' +
+      '</div>';
+    return;
+  }
+
   atletas.forEach(function (a, i) {
     const tarjeta = document.createElement('article');
     tarjeta.className = 'atleta a' + ((i % 6) + 1);
