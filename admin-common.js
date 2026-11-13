@@ -131,20 +131,35 @@ async function fetchJSON(parametros) {
 /* -------------------------------------------------------------------- */
 
 function mostrarMensaje(mensaje, tipo = 'success') {
-  const colores = {
-    success: 'bg-green-600',
-    error: 'bg-red-600',
-    info: 'bg-blue-600',
-    warning: 'bg-yellow-600'
-  };
+  let zona = document.getElementById('toast-zona');
+
+  if (!zona) {
+    zona = document.createElement('div');
+    zona.id = 'toast-zona';
+    zona.className = 'toast-zona';
+    zona.setAttribute('aria-live', 'polite');
+    document.body.appendChild(zona);
+  }
+
+  const tipos = { success: 'exito', error: 'error', info: 'info', warning: 'aviso' };
 
   const aviso = document.createElement('div');
-  aviso.className = 'fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg text-white ' +
-    (colores[tipo] || colores.info);
-  aviso.textContent = mensaje;
-  document.body.appendChild(aviso);
+  aviso.className = 'toast ' + (tipos[tipo] || 'info');
 
-  setTimeout(() => aviso.remove(), 3500);
+  const punto = document.createElement('span');
+  punto.className = 'punto-aviso';
+
+  const texto = document.createElement('span');
+  texto.textContent = mensaje;
+
+  aviso.appendChild(punto);
+  aviso.appendChild(texto);
+  zona.appendChild(aviso);
+
+  setTimeout(() => {
+    aviso.classList.add('saliendo');
+    setTimeout(() => aviso.remove(), 300);
+  }, 4200);
 }
 
 /* -------------------------------------------------------------------- */

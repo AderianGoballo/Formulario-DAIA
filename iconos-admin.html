@@ -1,68 +1,79 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-tema="oscuro">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Íconos - Administración</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Íconos — Administración DAIA</title>
+  <link rel="stylesheet" href="estilos.css">
+  <link rel="stylesheet" href="estilos-v4.css">
+  <link rel="stylesheet" href="admin-panel.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="admin-styles.css">
+  <script>
+    (function () {
+      try {
+        var pedido = new URLSearchParams(location.search).get('tema');
+        var tema = pedido || localStorage.getItem('daia-tema') || 'oscuro';
+        document.documentElement.setAttribute('data-tema', tema);
+      } catch (e) { /* sin almacenamiento */ }
+    })();
+  </script>
 </head>
 <body>
-  <div id="admin-content">
-    <header class="hero-section">
-      <div class="container mx-auto px-6 py-12 text-center">
-        <div class="logo-container">
-          <img id="logo-daia" src="daia.png" alt="DAIA Dirección de Deportes" class="logo">
-          <img id="logo-ucv" src="ucv.png" alt="Universidad Central de Venezuela" class="logo">
-        </div>
-        <div class="max-w-3xl mx-auto">
-          <h1 class="text-4xl md:text-5xl font-bold mb-6">
-            <i class="fas fa-icons mr-3"></i>Gestión de Íconos
-          </h1>
-        </div>
-      </div>
-    </header>
 
-    <main class="flex-grow container mx-auto px-6 py-12">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold text-indigo-800">
-          <i class="fas fa-icons mr-2"></i>Íconos de Disciplinas
-        </h2>
-        <span id="contador-iconos" class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
-          Cargando...
+  <div class="fondo-foto"></div>
+  <div class="fondo-velo"></div>
+
+  <header class="cabecera">
+    <div class="ancho">
+      <a class="marca" href="admin.html">
+        <img src="daia.png" id="logo-daia" alt="DAIA">
+        <img src="ucv.png" id="logo-ucv" alt="Universidad Central de Venezuela">
+        <span class="marca-texto">
+          <strong>Administración · Íconos</strong>
+          <span>Dirección de Atención Integral al Atleta</span>
         </span>
+      </a>
+      <div class="cabecera-acciones">
+        <a class="enlace-suave" href="admin.html">Volver al panel</a>
+        <button class="boton-tema" id="boton-tema" aria-label="Cambiar tema">☾</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="ancho panel">
+
+      <div class="barra-panel">
+        <h1>Íconos de las disciplinas</h1>
+        <span class="contador" id="contador-iconos">Cargando…</span>
       </div>
 
-      <div class="admin-table overflow-x-auto">
-        <table class="w-full">
+      <div class="tabla-envoltura">
+        <table class="tabla">
           <thead>
             <tr>
-              <th class="p-4 text-left text-white">ID</th>
-              <th class="p-4 text-left text-white">Disciplina</th>
-              <th class="p-4 text-left text-white">Ícono Actual</th>
-              <th class="p-4 text-left text-white">Nuevo Ícono</th>
-              <th class="p-4 text-left text-white">Acciones</th>
+              <th>ID</th>
+              <th>Disciplina</th>
+              <th>Ícono actual</th>
+              <th>Nuevo ícono</th>
+              <th>Acciones</th>
             </tr>
           </thead>
-          <tbody id="tabla-iconos-body" class="divide-y divide-gray-200"></tbody>
+          <tbody id="tabla-iconos-body"></tbody>
         </table>
       </div>
 
-      <div class="action-buttons mt-8">
-        <a href="admin.html" class="action-btn bg-gradient-to-r from-gray-600 to-gray-800 text-white font-bold py-3 px-6 rounded-lg hover:from-gray-700 hover:to-gray-900 transition-all">
-          <i class="fas fa-arrow-left mr-2"></i> Volver al Dashboard
-        </a>
-        <button id="btn-salir" class="action-btn bg-gradient-to-r from-red-600 to-red-800 text-white font-bold py-3 px-6 rounded-lg hover:from-red-700 hover:to-red-900 transition-all">
-          <i class="fas fa-sign-out-alt mr-2"></i> Salir del Sistema
-        </button>
-      </div>
-    </main>
+    </div>
+  </main>
 
-    <footer class="text-white py-12">
-      <!-- Footer igual que en facultades-admin.html -->
-    </footer>
-  </div>
+  <footer class="pie">
+    <div class="ancho">
+      <span>Universidad Central de Venezuela · Dirección de Deportes</span>
+      <span>daiadd@gmail.com · +58 212 605-4619</span>
+    </div>
+  </footer>
+
+  <div class="toast-zona" id="toast-zona" aria-live="polite"></div>
 
   <script src="admin-common.js"></script>
   <script src="iconos-admin.js"></script>

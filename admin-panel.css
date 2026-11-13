@@ -1,0 +1,180 @@
+/* =====================================================================
+   DAIA — Pantallas internas del panel
+   ===================================================================== */
+
+.panel { padding: 30px 0 60px; }
+
+.barra-panel {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 24px 0 18px;
+  flex-wrap: wrap;
+}
+
+.barra-panel h1 { font-size: 1.6rem; margin: 0; }
+
+.contador {
+  font-size: 15px;
+  color: var(--texto-suave);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--borde);
+}
+
+.alta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 18px;
+  margin-bottom: 18px;
+  border-radius: 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+}
+
+.alta .grupo-campo { flex: 1; min-width: 170px; }
+
+.etiqueta-sm {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-bottom: 6px;
+}
+
+.alta .campo,
+.alta .campo-selector {
+  margin: 0;
+  height: 50px;
+  width: 100%;
+  padding-left: 14px;
+  padding-right: 14px;
+  background: transparent;
+  font-size: 15.5px;
+}
+
+.alta .boton { height: 50px; }
+
+.tabla-envoltura {
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+}
+
+table.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+table.tabla th {
+  text-align: left;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--borde);
+  white-space: nowrap;
+}
+
+table.tabla td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--borde);
+  font-size: 15.5px;
+  vertical-align: middle;
+}
+
+table.tabla tr:last-child td { border-bottom: none; }
+table.tabla tbody tr { transition: background 0.2s; }
+table.tabla tbody tr:hover { background: rgba(34, 211, 238, 0.06); }
+
+.celda-fuerte { font-weight: 700; }
+
+.icono-boton {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--borde);
+  background: transparent;
+  color: var(--texto-suave);
+  cursor: pointer;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.icono-boton:hover { border-color: var(--cian); color: var(--cian); }
+
+.vacio {
+  padding: 26px;
+  text-align: center;
+  color: var(--texto-suave);
+}
+
+.tarjeta-form {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 28px;
+  border-radius: 18px;
+  background: var(--superficie);
+  border: 1px solid var(--borde-fuerte);
+}
+
+.tarjeta-form .etiqueta { margin-top: 6px; }
+
+.tarjeta-form .campo-texto { margin-bottom: 16px; }
+
+@media (max-width: 720px) {
+  .alta .boton { width: 100%; }
+  .barra-panel { margin-top: 16px; }
+}
+
+/* Controles generados por el JavaScript de cada módulo */
+
+table.tabla td button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--cian);
+  font-size: 15px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+
+table.tabla td button:hover { background: rgba(34, 211, 238, 0.14); }
+
+table.tabla td button.eliminar-atleta,
+table.tabla td button.eliminar-disciplina,
+table.tabla td button.eliminar-facultad,
+table.tabla td button.eliminar-escuela { color: var(--rojo); }
+
+table.tabla td button.eliminar-atleta:hover,
+table.tabla td button.eliminar-disciplina:hover,
+table.tabla td button.eliminar-facultad:hover,
+table.tabla td button.eliminar-escuela:hover { background: rgba(251, 113, 133, 0.14); }
+
+table.tabla input[type="password"],
+table.tabla input[type="text"],
+table.tabla select {
+  background: transparent;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+table.tabla input[type="password"] { width: 130px; }
+table.tabla select { width: 100%; max-width: 220px; }
+table.tabla select option { background: var(--superficie-solida); }
