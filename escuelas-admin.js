@@ -169,23 +169,22 @@ async function editarEscuela() {
   const facultadActual = facultades.find(f => f.id == escuela.facultadId) || { nombre: 'Desconocido' };
   
   const form = document.createElement('div');
-  form.className = 'space-y-4';
-  
+  form.className = 'form-edicion';
+
   form.innerHTML += `
     <div>
-      <label class="block text-gray-700 mb-2">Nombre</label>
-      <input type="text" id="edit-escuela-nombre" value="${escuela.nombre}" 
-        class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+      <label for="edit-escuela-nombre">Nombre</label>
+      <input type="text" id="edit-escuela-nombre" value="${escuela.nombre}">
     </div>
   `;
-  
+
   let optionsFacultades = facultades.map(f => 
     `<option value="${f.id}" ${f.id == escuela.facultadId ? 'selected' : ''}>${f.nombre}</option>`
   ).join('');
   form.innerHTML += `
     <div>
-      <label class="block text-gray-700 mb-2">Facultad</label>
-      <select id="edit-escuela-facultad" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+      <label for="edit-escuela-facultad">Facultad</label>
+      <select id="edit-escuela-facultad">
         <option value="">Seleccione facultad</option>
         ${optionsFacultades}
       </select>

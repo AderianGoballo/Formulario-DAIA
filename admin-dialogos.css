@@ -1,0 +1,104 @@
+/* =====================================================================
+   DAIA — Ventanas de edición (SweetAlert con el estilo del sistema)
+   ===================================================================== */
+
+.swal2-popup {
+  background: var(--superficie-solida) !important;
+  color: var(--texto) !important;
+  border: 1px solid var(--borde-fuerte) !important;
+  border-radius: 18px !important;
+  font-family: inherit !important;
+}
+
+.swal2-title {
+  color: var(--texto) !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+}
+
+.swal2-html-container {
+  color: var(--texto-suave) !important;
+  margin: 12px 0 0 !important;
+}
+
+.swal2-input,
+.swal2-select {
+  background: transparent !important;
+  border: 1.5px solid var(--borde-fuerte) !important;
+  border-radius: 10px !important;
+  color: var(--texto) !important;
+  font-family: inherit !important;
+  height: 46px !important;
+  box-shadow: none !important;
+}
+
+.swal2-input:focus,
+.swal2-select:focus {
+  border-color: var(--cian) !important;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.18) !important;
+}
+
+.swal2-confirm {
+  background: linear-gradient(120deg, var(--cian), var(--violeta)) !important;
+  color: #07070E !important;
+  font-weight: 800 !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+.swal2-cancel {
+  background: transparent !important;
+  border: 1.5px solid var(--borde-fuerte) !important;
+  color: var(--texto) !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+}
+
+.form-edicion {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.form-edicion label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  margin-bottom: 5px;
+}
+
+.form-edicion input,
+.form-edicion select {
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1.5px solid var(--borde-fuerte);
+  border-radius: 10px;
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.form-edicion select option { background: var(--superficie-solida); color: var(--texto); }
+
+.form-edicion input:focus,
+.form-edicion select:focus {
+  outline: none;
+  border-color: var(--cian);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.18);
+}
+
+.fila-doble {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 520px) {
+  .fila-doble { grid-template-columns: 1fr; }
+}

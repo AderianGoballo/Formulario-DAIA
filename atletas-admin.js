@@ -28,6 +28,12 @@ function escapeHtml(texto) {
     .replace(/'/g, '&#39;');
 }
 
+function formatearCedula(cedula) {
+  const d = String(cedula || '').replace(/\D/g, '');
+  if (!d) return '—';
+  return 'V-' + d.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 async function cargarDisciplinas() {
   try {
     const data = await fetchJSON({ tipo: 'getDisciplinas' });
@@ -126,6 +132,7 @@ function agregarFilaAtleta(atleta) {
   tr.innerHTML = `
     <td class="p-4">${atleta.id}</td>
     <td class="p-4 font-medium">${escapeHtml(atleta.nombre)}</td>
+    <td class="p-4">${formatearCedula(atleta.cedula)}</td>
     <td class="p-4">${escapeHtml(disciplina.nombre)}</td>
     <td class="p-4">${escapeHtml(facultad.nombre)}</td>
     <td class="p-4">${escapeHtml(escuela.nombre)}</td>
@@ -159,6 +166,7 @@ function actualizarFilaAtleta(atletaId) {
     row.innerHTML = `
       <td class="p-4">${atleta.id}</td>
       <td class="p-4 font-medium">${escapeHtml(atleta.nombre)}</td>
+    <td class="p-4">${formatearCedula(atleta.cedula)}</td>
       <td class="p-4">${disciplina.nombre}</td>
       <td class="p-4">${facultad.nombre}</td>
       <td class="p-4">${escuela.nombre}</td>
@@ -260,157 +268,108 @@ async function agregarAtleta() {
 
 async function editarAtleta() {
   const atletaId = this.dataset.id;
-  const atleta = atletas.find(a => a.id == atletaId);
-  
+  const atleta = atletas.find(a => String(a.id) === String(atletaId));
   if (!atleta) return;
 
+  function opciones(lista, seleccionado, textoVacio) {
+    let html = textoVacio ? '<option value="">' + textoVacio + '</option>' : '';
+    lista.forEach(function (item) {
+      html += '<option value="' + item.id + '"' +
+        (String(item.id) === String(seleccionado) ? ' selected' : '') + '>' +
+        escapeHtml(item.nombre) + '</option>';
+    });
+    return html;
+  }
+
+  const formulario =
+    '<div class="form-edicion">' +
+      '<div><label for="e-nombre">Nombre completo</label>' +
+        '<input id="e-nombre" type="text" value="' + escapeHtml(atleta.nombre) + '"></div>' +
+      '<div class="fila-doble">' +
+        '<div><label for="e-cedula">Cédula</label>' +
+          '<input id="e-cedula" type="text" inputmode="numeric" placeholder="31925673" value="' + escapeHtml(atleta.cedula || '') + '"></div>' +
+        '<div><label for="e-anio">Año de ingreso</label>' +
+          '<input id="e-anio" type="number" min="1990" max="2100" placeholder="2025" value="' + escapeHtml(atleta.anioIngreso || '') + '"></div>' +
+      '</div>' +
+      '<div><label for="e-carrera">Carrera</label>' +
+        '<input id="e-carrera" type="text" placeholder="Comunicación Social" value="' + escapeHtml(atleta.carrera || '') + '"></div>' +
+      '<div><label for="e-disciplina">Disciplina</label>' +
+        '<select id="e-disciplina">' + opciones(disciplinas, atleta.disciplinaId, 'Sin asignar') + '</select></div>' +
+      '<div><label for="e-facultad">Facultad</label>' +
+        '<select id="e-facultad">' + opciones(facultades, atleta.facultadId, 'Sin asignar') + '</select></div>' +
+      '<div><label for="e-escuela">Escuela</label>' +
+        '<select id="e-escuela">' + opciones(escuelas, atleta.escuelaId, 'Sin asignar') + '</select></div>' +
+    '</div>';
+
   if (typeof Swal === 'undefined') {
-    const nuevoNombre = prompt('Editar nombre del atleta:', atleta.nombre);
-    if (nuevoNombre === null || nuevoNombre.trim() === '') return;
-    
-    const disciplinaId = prompt('ID de disciplina:', atleta.disciplinaId);
-    const facultadId = prompt('ID de facultad:', atleta.facultadId);
-    const escuelaId = prompt('ID de escuela:', atleta.escuelaId);
-    
-    if (!nuevoNombre || !disciplinaId || !facultadId || !escuelaId) {
-      mostrarMensaje('Complete todos los campos', 'error');
-      return;
-    }
-
-    try {
-      const res = await postData({
-        tipo: 'editar-atleta',
-        id: atletaId,
-        nombre: nuevoNombre.trim(),
-        disciplinaId: disciplinaId,
-        facultadId: facultadId,
-        escuelaId: escuelaId,
-        adminKey: ADMIN_KEY
-      });
-
-      if (res.status === 'ok') {
-        // Actualizar localmente
-        const index = atletas.findIndex(a => a.id == atletaId);
-        if (index !== -1) {
-          atletas[index] = {
-            ...atletas[index],
-            nombre: nuevoNombre.trim(),
-            disciplinaId: disciplinaId,
-            facultadId: facultadId,
-            escuelaId: escuelaId
-          };
-          actualizarFilaAtleta(atletaId);
-        }
-        mostrarMensaje('Atleta actualizado correctamente');
-      } else {
-        throw new Error(res.message || 'Error al actualizar');
-      }
-    } catch (error) {
-      mostrarMensaje('Error: ' + error.message, 'error');
-    }
+    const nuevoNombre = prompt('Nombre del atleta:', atleta.nombre);
+    if (!nuevoNombre || !nuevoNombre.trim()) return;
+    await guardarCambiosAtleta(atletaId, {
+      nombre: nuevoNombre.trim(),
+      cedula: atleta.cedula || '',
+      anioIngreso: atleta.anioIngreso || '',
+      carrera: atleta.carrera || '',
+      disciplinaId: atleta.disciplinaId,
+      facultadId: atleta.facultadId,
+      escuelaId: atleta.escuelaId
+    });
     return;
   }
 
-  const form = document.createElement('div');
-  form.className = 'space-y-4';
-  
-  form.innerHTML += `
-    <div>
-      <label class="block text-gray-700 mb-2">Nombre</label>
-      <input type="text" id="edit-atleta-nombre" value="${escapeHtml(atleta.nombre)}"
-        class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-    </div>
-  `;
-  
-  let optionsDisciplinas = disciplinas.map(d => 
-    `<option value="${d.id}" ${d.id == atleta.disciplinaId ? 'selected' : ''}>${escapeHtml(d.nombre)}</option>`
-  ).join('');
-  form.innerHTML += `
-    <div>
-      <label class="block text-gray-700 mb-2">Disciplina</label>
-      <select id="edit-atleta-disciplina" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-        <option value="">Seleccione disciplina</option>
-        ${optionsDisciplinas}
-      </select>
-    </div>
-  `;
-  
-  let optionsFacultades = facultades.map(f => 
-    `<option value="${f.id}" ${f.id == atleta.facultadId ? 'selected' : ''}>${escapeHtml(f.nombre)}</option>`
-  ).join('');
-  form.innerHTML += `
-    <div>
-      <label class="block text-gray-700 mb-2">Facultad</label>
-      <select id="edit-atleta-facultad" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-        <option value="">Seleccione facultad</option>
-        ${optionsFacultades}
-      </select>
-    </div>
-  `;
-  
-  let optionsEscuelas = escuelas.map(e => 
-    `<option value="${e.id}" ${e.id == atleta.escuelaId ? 'selected' : ''}>${escapeHtml(e.nombre)}</option>`
-  ).join('');
-  form.innerHTML += `
-    <div>
-      <label class="block text-gray-700 mb-2">Escuela</label>
-      <select id="edit-atleta-escuela" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
-        <option value="">Seleccione escuela</option>
-        ${optionsEscuelas}
-      </select>
-    </div>
-  `;
-  
-  const { value: formValues } = await Swal.fire({
-    title: 'Editar Atleta',
-    html: form,
-    focusConfirm: false,
+  const resultado = await Swal.fire({
+    title: 'Editar atleta',
+    html: formulario,
+    width: 560,
     showCancelButton: true,
-    preConfirm: () => {
+    confirmButtonText: 'Guardar cambios',
+    cancelButtonText: 'Cancelar',
+    focusConfirm: false,
+    preConfirm: function () {
+      const nombre = document.getElementById('e-nombre').value.trim();
+      if (!nombre) {
+        Swal.showValidationMessage('El nombre no puede quedar vacío');
+        return false;
+      }
       return {
-        nombre: document.getElementById('edit-atleta-nombre').value,
-        disciplinaId: document.getElementById('edit-atleta-disciplina').value,
-        facultadId: document.getElementById('edit-atleta-facultad').value,
-        escuelaId: document.getElementById('edit-atleta-escuela').value
+        nombre: nombre,
+        cedula: document.getElementById('e-cedula').value.trim(),
+        anioIngreso: document.getElementById('e-anio').value.trim(),
+        carrera: document.getElementById('e-carrera').value.trim(),
+        disciplinaId: document.getElementById('e-disciplina').value,
+        facultadId: document.getElementById('e-facultad').value,
+        escuelaId: document.getElementById('e-escuela').value
       };
     }
   });
 
-  if (!formValues) return;
-  
-  if (!formValues.nombre || !formValues.disciplinaId || !formValues.facultadId || !formValues.escuelaId) {
-    mostrarMensaje('Complete todos los campos', 'error');
-    return;
-  }
+  if (!resultado.value) return;
+  await guardarCambiosAtleta(atletaId, resultado.value);
+}
 
+async function guardarCambiosAtleta(atletaId, datos) {
   try {
     const res = await postData({
       tipo: 'editar-atleta',
       id: atletaId,
-      nombre: formValues.nombre,
-      disciplinaId: formValues.disciplinaId,
-      facultadId: formValues.facultadId,
-      escuelaId: formValues.escuelaId,
+      nombre: datos.nombre,
+      disciplinaId: datos.disciplinaId,
+      facultadId: datos.facultadId,
+      escuelaId: datos.escuelaId,
+      cedula: datos.cedula,
+      anioIngreso: datos.anioIngreso,
+      carrera: datos.carrera,
       adminKey: ADMIN_KEY
     });
 
-    if (res.status === 'ok') {
-      // Actualizar localmente
-      const index = atletas.findIndex(a => a.id == atletaId);
-      if (index !== -1) {
-        atletas[index] = {
-          ...atletas[index],
-          nombre: formValues.nombre,
-          disciplinaId: formValues.disciplinaId,
-          facultadId: formValues.facultadId,
-          escuelaId: formValues.escuelaId
-        };
-        actualizarFilaAtleta(atletaId);
-      }
-      mostrarMensaje('Atleta actualizado correctamente');
-    } else {
-      throw new Error(res.message || 'Error al actualizar');
+    if (res.status !== 'ok') throw new Error(res.message || 'Error al actualizar');
+
+    const indice = atletas.findIndex(a => String(a.id) === String(atletaId));
+    if (indice !== -1) {
+      atletas[indice] = Object.assign({}, atletas[indice], datos);
+      actualizarFilaAtleta(atletaId);
     }
+
+    mostrarMensaje('Atleta actualizado');
   } catch (error) {
     mostrarMensaje('Error: ' + error.message, 'error');
   }

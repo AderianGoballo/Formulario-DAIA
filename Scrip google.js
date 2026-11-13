@@ -996,13 +996,15 @@ function agregarAtleta(nombre, disciplinaId, facultadId, escuelaId, cedula, anio
 
 function editarAtleta(id, nombre, disciplinaId, facultadId, escuelaId, cedula, anioIngreso, carrera) {
   var limpio = normalizar_(nombre);
-  if (!id || !limpio || !disciplinaId || !facultadId || !escuelaId) return error_('Faltan datos');
+  if (!id || !limpio) return error_('El nombre es obligatorio');
 
   var hoja = hoja_(HOJAS.ATLETAS);
   var filas = hoja.getDataRange().getValues();
   for (var i = 1; i < filas.length; i++) {
     if (String(filas[i][0]) === String(id)) {
-      hoja.getRange(i + 1, 2, 1, 4).setValues([[limpio, disciplinaId, facultadId, escuelaId]]);
+      hoja.getRange(i + 1, 2, 1, 4).setValues([[
+        limpio, disciplinaId || '', facultadId || '', escuelaId || ''
+      ]]);
 
       // Los datos personales solo se sobrescriben si llegan
       if (cedula !== undefined) {
