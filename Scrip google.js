@@ -276,6 +276,9 @@ function doPost(e) {
       case 'limpiarDuplicados':
         respuesta = limpiarDuplicados(datos.simular !== 'false');
         break;
+      case 'repararDatos':
+        respuesta = repararDatos(datos.simular !== 'false');
+        break;
       default:
         respuesta = error_('Operación no soportada: ' + (tipo || 'ninguna'));
     }
@@ -324,7 +327,10 @@ function verificarAccesoDisciplina(disciplinaId, clave) {
   for (var i = 0; i < filas.length; i++) {
     if (String(filas[i][0]) === String(disciplinaId)) {
       var esperada = normalizar_(filas[i][2]);
-      if (esperada && String(clave || '').trim() === esperada) {
+      if (!esperada) {
+        return error_('Esta disciplina todavía no tiene clave asignada. Pídesela al administrador.');
+      }
+      if (String(clave || '').trim() === esperada) {
         var token = nuevoToken_();
         try {
           CacheService.getScriptCache().put('tok_' + token, String(disciplinaId), TOKEN_TTL);
@@ -746,6 +752,120 @@ function limpiarDuplicados(simular) {
     eliminados: filas.length,
     respuestasMovidas: movimientos.length,
     detalle: detalle
+  };
+}
+
+/* =====================================================================
+ * Mantenimiento: reparación general de datos
+ * ===================================================================== */
+
+/**
+ * Corrige los problemas habituales de la hoja:
+ * nombres con espacios o en minúsculas, disciplinas de prueba sin uso,
+ * claves vacías, atletas sin nombre y referencias a IDs inexistentes.
+ */
+function repararDatos(simular) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hojaDisc = ss.getSheetByName(HOJAS.DISCIPLINAS);
+  var hojaAtl = ss.getSheetByName(HOJAS.ATLETAS);
+  var hojaFac = ss.getSheetByName(HOJAS.FACULTADES);
+  var hojaEsc = ss.getSheetByName(HOJAS.ESCUELAS);
+
+  var disc = hojaDisc.getDataRange().getValues();
+  var atl = hojaAtl.getDataRange().getValues();
+
+  var facultades = {};
+  hojaFac.getDataRange().getValues().slice(1).forEach(function (r) {
+    if (r[0] !== '' && r[0] !== null) facultades[String(r[0])] = true;
+  });
+
+  var escuelas = {};
+  hojaEsc.getDataRange().getValues().slice(1).forEach(function (r) {
+    if (r[0] !== '' && r[0] !== null) escuelas[String(r[0])] = true;
+  });
+
+  var acciones = [];
+  var disciplinas = {};
+  var borrarDisciplinas = [];
+  var borrarAtletas = [];
+
+  /* ---- Disciplinas ---- */
+  for (var i = 1; i < disc.length; i++) {
+    var id = disc[i][0];
+    if (id === '' || id === null || id === undefined) continue;
+
+    var nombre = normalizar_(disc[i][1]).replace(/\s+/g, ' ').trim().toUpperCase();
+
+    if (nombre !== disc[i][1]) {
+      acciones.push({ tipo: 'renombrar-disciplina', id: id, de: String(disc[i][1]), a: nombre });
+      if (!simular) hojaDisc.getRange(i + 1, 2).setValue(nombre);
+    }
+
+    if (!String(disc[i][2] || '').trim()) {
+      acciones.push({ tipo: 'asignar-clave-temporal', id: id, nombre: nombre });
+      if (!simular) hojaDisc.getRange(i + 1, 3).setValue('1');
+    }
+
+    disciplinas[String(id)] = nombre;
+
+    if (nombre === 'PRUEBA') {
+      var usados = 0;
+      for (var k = 1; k < atl.length; k++) {
+        if (String(atl[k][2]) === String(id)) usados++;
+      }
+      if (usados === 0) {
+        acciones.push({ tipo: 'borrar-disciplina', id: id, nombre: nombre });
+        if (!simular) borrarDisciplinas.push(i + 1);
+      }
+    }
+  }
+
+  /* ---- Atletas ---- */
+  for (var j = 1; j < atl.length; j++) {
+    var fila = j + 1;
+    var nombreAtleta = String(atl[j][1] || '').trim();
+
+    if (!nombreAtleta) {
+      acciones.push({ tipo: 'borrar-atleta-sin-nombre', id: atl[j][0] });
+      if (!simular) borrarAtletas.push(fila);
+      continue;
+    }
+
+    var d = String(atl[j][2] || '').trim();
+    if (d && !disciplinas[d]) {
+      acciones.push({ tipo: 'quitar-disciplina-inexistente', id: atl[j][0], valor: d });
+      if (!simular) hojaAtl.getRange(fila, 3).setValue('');
+    }
+
+    var f = String(atl[j][3] || '').trim();
+    if (f && !facultades[f]) {
+      acciones.push({ tipo: 'quitar-facultad-inexistente', id: atl[j][0], valor: f });
+      if (!simular) hojaAtl.getRange(fila, 4).setValue('');
+    }
+
+    var e = String(atl[j][4] || '').trim();
+    if (e && !escuelas[e]) {
+      acciones.push({ tipo: 'quitar-escuela-inexistente', id: atl[j][0], valor: e });
+      if (!simular) hojaAtl.getRange(fila, 5).setValue('');
+    }
+  }
+
+  /* ---- Borrados, de abajo hacia arriba ---- */
+  if (!simular) {
+    borrarAtletas.sort(function (a, b) { return b - a; })
+      .forEach(function (f) { hojaAtl.deleteRow(f); });
+
+    borrarDisciplinas.sort(function (a, b) { return b - a; })
+      .forEach(function (f) { hojaDisc.deleteRow(f); });
+
+    invalidarCache_();
+  }
+
+  return {
+    status: 'ok',
+    simulacion: simular,
+    total: acciones.length,
+    acciones: acciones
   };
 }
 
