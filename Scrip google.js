@@ -72,6 +72,16 @@ function normalizar_(valor) {
   return texto.replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Clave de comparación: sin tildes, sin mayúsculas y sin espacios extra.
+ */
+function clave_(texto) {
+  return normalizar_(texto)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase();
+}
+
 function claveAdminConfigurada_() {
   try {
     return PropertiesService.getScriptProperties().getProperty(PROPIEDAD_CLAVE_ADMIN) || '';
@@ -89,7 +99,7 @@ function esAdmin_(clave) {
 function invalidarCache_() {
   try {
     CacheService.getScriptCache().removeAll([
-      'disciplinas', 'facultades', 'escuelas', 'iconos', 'atletas'
+      'disciplinas', 'disciplinas_v2', 'facultades', 'escuelas', 'iconos', 'atletas'
     ]);
   } catch (e) {
     /* la caché es opcional */
@@ -346,7 +356,7 @@ function tokenValidoPara_(token, disciplinaId) {
  * ===================================================================== */
 
 function getDisciplinas() {
-  var cache = cacheGet_('disciplinas');
+  var cache = cacheGet_('disciplinas_v2');
   if (cache) return cache;
 
   var iconos = mapaIconos_();
@@ -360,7 +370,7 @@ function getDisciplinas() {
   });
 
   var resultado = { status: 'ok', disciplinas: disciplinas };
-  cachePut_('disciplinas', resultado);
+  cachePut_('disciplinas_v2', resultado);
   return resultado;
 }
 
@@ -537,7 +547,7 @@ function datosFicha_(r, disciplinas, facultades) {
  * Búsqueda pública por nombre o cédula. Devuelve como máximo 10 coincidencias.
  */
 function buscarAtleta(consulta) {
-  var q = normalizar_(consulta);
+  var q = clave_(consulta);
   if (!q || q.length < 3) return error_('Escribe al menos 3 letras o la cédula');
 
   var soloDigitos = q.replace(/\D/g, '');
@@ -550,7 +560,7 @@ function buscarAtleta(consulta) {
   for (var i = 0; i < filas.length && encontrados.length < 10; i++) {
     var r = filas[i];
     var cedula = String(r[5] || '').replace(/\D/g, '');
-    var nombre = normalizar_(r[1]);
+    var nombre = clave_(r[1]);
 
     var coincide = soloDigitos
       ? cedula.indexOf(soloDigitos) !== -1
