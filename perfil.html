@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="oscuro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ficha del atleta — DAIA</title>
+  <link rel="stylesheet" href="estilos.css">
+  <link rel="stylesheet" href="estilos-v4.css">
+  <script>
+    (function () {
+      try {
+        var pedido = new URLSearchParams(location.search).get('tema');
+        var tema = pedido || localStorage.getItem('daia-tema') || 'oscuro';
+        document.documentElement.setAttribute('data-tema', tema);
+      } catch (e) { /* sin almacenamiento */ }
+    })();
+  </script>
+</head>
+<body>
+
+  <div class="fondo-foto"></div>
+  <div class="fondo-velo"></div>
+
+  <header class="cabecera">
+    <div class="ancho">
+      <a class="marca" href="index.html">
+        <img src="daia.png" alt="DAIA">
+        <img src="ucv.png" alt="Universidad Central de Venezuela">
+        <span class="marca-texto">
+          <strong>Dirección de Atención Integral al Atleta</strong>
+          <span>Universidad Central de Venezuela</span>
+        </span>
+      </a>
+      <div class="cabecera-acciones">
+        <a class="enlace-suave" href="index.html">Nueva consulta</a>
+        <button class="boton-tema" id="boton-tema" aria-label="Cambiar entre tema claro y oscuro">☾</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="ancho">
+
+      <a class="volver" href="index.html">← Volver a la consulta</a>
+
+      <div class="perfil" id="perfil">
+        <p class="seccion-sub">Cargando ficha…</p>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="pie">
+    <div class="ancho">
+      <span>Universidad Central de Venezuela · Dirección de Deportes</span>
+      <span>daiadd@gmail.com · +58 212 605-4619</span>
+    </div>
+  </footer>
+
+  <div class="toast-zona" id="toast-zona" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

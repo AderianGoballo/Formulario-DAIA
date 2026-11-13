@@ -185,6 +185,9 @@ async function agregarAtleta() {
   const disciplinaId = document.getElementById('select-disciplina-atleta').value;
   const facultadId = document.getElementById('select-facultad-atleta').value;
   const escuelaId = document.getElementById('select-escuela-atleta').value;
+  const cedula = (document.getElementById('input-cedula-atleta') || {}).value || '';
+  const anioIngreso = (document.getElementById('input-anio-atleta') || {}).value || '';
+  const carrera = (document.getElementById('input-carrera-atleta') || {}).value || '';
 
   if (!nombre) {
     mostrarMensaje('Ingrese un nombre válido', 'error');
@@ -214,6 +217,9 @@ async function agregarAtleta() {
       disciplinaId: disciplinaId,
       facultadId: facultadId,
       escuelaId: escuelaId,
+      cedula: cedula,
+      anioIngreso: anioIngreso,
+      carrera: carrera,
       adminKey: ADMIN_KEY
     });
 
@@ -222,7 +228,14 @@ async function agregarAtleta() {
       document.getElementById('select-disciplina-atleta').value = '';
       document.getElementById('select-facultad-atleta').value = '';
       document.getElementById('select-escuela-atleta').value = '';
-      
+
+      const campoCedula = document.getElementById('input-cedula-atleta');
+      const campoAnio = document.getElementById('input-anio-atleta');
+      const campoCarrera = document.getElementById('input-carrera-atleta');
+      if (campoCedula) campoCedula.value = '';
+      if (campoAnio) campoAnio.value = '';
+      if (campoCarrera) campoCarrera.value = '';
+
       // Actualizar la lista local y la tabla
       const nuevoAtleta = {
         id: res.id || Date.now(),

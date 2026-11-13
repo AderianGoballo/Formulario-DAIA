@@ -1,370 +1,138 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-tema="oscuro">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Acceso Disciplina</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root {
-      --color-primary: #1E40AF;
-      --color-secondary: #1E3A8A;
-      --color-accent: #3B82F6;
-      --color-light: #EFF6FF;
-      --color-success: #10B981;
-    }
-    
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #F9FAFB;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .hero-section {
-      background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%);
-      color: white;
-      position: relative;
-    }
-    
-    .login-card {
-      transition: all 0.3s ease;
-      border-radius: 12px;
-      overflow: hidden;
-      position: relative;
-      background: white;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .login-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 25px rgba(30, 64, 175, 0.2);
-    }
-    
-    .login-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #3B82F6, #10B981);
-    }
-    
-    .carousel {
-      position: relative;
-      height: 400px;
-      overflow: hidden;
-    }
-    
-    .carousel-inner {
-      position: relative;
-      width: 100%;
-      height: 100%;
-    }
-    
-    .carousel-item {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      transition: opacity 1s ease-in-out;
-      background-size: cover;
-      background-position: center;
-    }
-    
-    .carousel-item.active {
-      opacity: 1;
-    }
-    
-    footer {
-      background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
-    }
-    
-    .logo-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 3rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .logo {
-      height: 100px;
-      object-fit: contain;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      cursor: pointer;
-      transition: transform 0.3s ease;
-    }
-    
-    .logo:hover {
-      transform: scale(1.05);
-    }
-    
-    .btn-primary {
-      background: linear-gradient(to right, #3B82F6, #1E40AF);
-      color: white;
-      font-weight: 600;
-      padding: 0.75rem 1.5rem;
-      border-radius: 0.5rem;
-      transition: all 0.3s ease;
-    }
-    
-    .btn-primary:hover {
-      background: linear-gradient(to right, #2563EB, #1E3A8A);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .form-input {
-      width: 100%;
-      padding: 0.75rem 1rem;
-      border: 1px solid #D1D5DB;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-      transition: all 0.2s ease;
-    }
-    
-    .form-input:focus {
-      outline: none;
-      border-color: #3B82F6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .form-group {
-      margin-bottom: 1.5rem;
-    }
-    
-    @media (max-width: 768px) {
-      .logo {
-        height: 80px;
-      }
-      .logo-container {
-        flex-direction: column;
-        gap: 1.5rem;
-      }
-      .carousel {
-        height: 300px;
-      }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acceso a la disciplina — DAIA</title>
+  <link rel="stylesheet" href="estilos.css">
+  <link rel="stylesheet" href="estilos-v4.css">
+  <script>
+    (function () {
+      try {
+        var pedido = new URLSearchParams(location.search).get('tema');
+        var tema = pedido || localStorage.getItem('daia-tema') || 'oscuro';
+        document.documentElement.setAttribute('data-tema', tema);
+      } catch (e) { /* sin almacenamiento */ }
+    })();
+  </script>
 </head>
 <body>
-  <!-- Hero Section -->
-  <header class="hero-section">
-    <div class="container mx-auto px-6 py-12 text-center">
-      <div class="logo-container">
-        <img src="daia.png" alt="DAIA Dirección de Deportes" class="logo" onclick="window.location.href='index.html'">
-        <img src="ucv.png" alt="Universidad Central de Venezuela" class="logo" onclick="window.location.href='index.html'">
-      </div>
-      <div class="max-w-3xl mx-auto">
-        <h1 class="text-4xl md:text-5xl font-bold mb-6">
-          <i class="fas fa-lock mr-3"></i>Acceso a Disciplina
-        </h1>
-        <p class="text-xl text-blue-100 mb-8">
-          Sistema integral para el monitoreo y evaluación de deportistas universitarios
-        </p>
+
+  <div class="fondo-foto"></div>
+  <div class="fondo-velo"></div>
+
+  <header class="cabecera">
+    <div class="ancho">
+      <a class="marca" href="index.html">
+        <img src="daia.png" alt="DAIA">
+        <img src="ucv.png" alt="Universidad Central de Venezuela">
+        <span class="marca-texto">
+          <strong>Dirección de Atención Integral al Atleta</strong>
+          <span>Universidad Central de Venezuela</span>
+        </span>
+      </a>
+      <div class="cabecera-acciones">
+        <a class="enlace-suave" href="index.html">Volver al inicio</a>
+        <button class="boton-tema" id="boton-tema" aria-label="Cambiar entre tema claro y oscuro">☾</button>
       </div>
     </div>
   </header>
 
-  <!-- Carrusel de Imágenes Funcional -->
-  <div class="carousel">
-    <div class="carousel-inner">
-      <div class="carousel-item active" style="background-image: url('https://images.unsplash.com/photo-1547347298-4074fc3086f0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
-      <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
-      <div class="carousel-item" style="background-image: url('https://images.unsplash.com/photo-1517649763962-0c623066013b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80')"></div>
-    </div>
-  </div>
+  <main>
+    <div class="ancho">
+      <div class="acceso aparecer">
 
-  <!-- Contenido Principal -->
-  <main class="flex-grow container mx-auto px-6 py-12">
-    <div class="login-card max-w-md mx-auto p-8">
-      <div class="text-center mb-6">
-        <i class="fas fa-running text-5xl text-blue-600 mb-4"></i>
-        <h2 id="nombreDisciplina" class="text-2xl font-bold text-blue-800">Acceso a Disciplina</h2>
-        <p class="text-gray-600 mt-2">Ingrese la clave de acceso</p>
+        <h1 class="seccion-titulo" style="font-size: 1.7rem;">Acceso a la disciplina</h1>
+        <p class="seccion-sub" id="nombre-disciplina" style="margin-bottom: 20px;">Introduce la clave que te entregó la Dirección de Deportes.</p>
+
+        <div class="tarjeta">
+          <label class="etiqueta" for="clave">Clave de la disciplina</label>
+          <input class="campo-texto" id="clave" type="password" placeholder="Escribe la clave" autocomplete="off">
+
+          <button class="boton" id="btn-acceder" style="width: 100%;">Entrar</button>
+
+          <span class="ayuda">Si no recuerdas la clave, pídesela al administrador del sistema.</span>
+        </div>
+
       </div>
-      
-      <div class="form-group">
-        <label for="claveDisciplina" class="block text-gray-700 mb-2 font-medium">Clave:</label>
-        <input type="password" id="claveDisciplina" class="form-input">
-      </div>
-      
-      <button id="btnAcceder" class="btn-primary w-full py-3">
-        <i class="fas fa-sign-in-alt mr-2"></i> Acceder
-      </button>
-      
-      <p class="text-center mt-6 text-gray-600">
-        <a href="index.html" class="text-blue-600 hover:underline">Volver a disciplinas</a>
-      </p>
     </div>
   </main>
 
-  <!-- Footer Mejorado -->
-  <footer class="text-white py-12">
-    <div class="container mx-auto px-6">
-      <div class="flex flex-col md:flex-row justify-between items-center">
-        <div class="mb-6 md:mb-0">
-          <h3 class="text-2xl font-bold mb-4">
-            <i class="fas fa-university mr-2"></i>Universidad Central de Venezuela
-          </h3>
-          <p class="text-blue-100">Dirección de Deportes</p>
-          <p class="text-blue-100">División de Asistencia Integral al Atleta</p>
-        </div>
-        
-        <div class="flex space-x-6 mb-6 md:mb-0">
-          <a href="https://www.facebook.com/p/DAIA-Deportes-UCV-100076199720429/" class="text-white hover:text-blue-300 text-2xl">
-            <i class="fab fa-facebook"></i>
-          </a>
-          <a href="https://x.com/daiadeportesucv" class="text-white hover:text-blue-300 text-2xl">
-            <i class="fab fa-twitter"></i>
-          </a>
-          <a href="https://www.instagram.com/daiadeportesucv/?hl=es" class="text-white hover:text-blue-300 text-2xl">
-            <i class="fab fa-instagram"></i>
-          </a>
-        </div>
-        
-        <div class="text-center md:text-right">
-          <h4 class="font-bold mb-2">Contacto</h4>
-          <p class="text-blue-100">
-            <i class="fas fa-envelope mr-2"></i>daiadd@gmail.com
-          </p>
-          <p class="text-blue-100">
-            <i class="fas fa-phone mr-2"></i>+58 212 605-4619
-          </p>
-        </div>
-      </div>
-      
-      <div class="border-t border-blue-700 mt-8 pt-8 text-center text-blue-200">
-        <p>&copy; 2023 Sistema de Seguimiento de Atletas. Todos los derechos reservados.</p>
-      </div>
+  <footer class="pie">
+    <div class="ancho">
+      <span>Universidad Central de Venezuela · Dirección de Deportes</span>
+      <span>daiadd@gmail.com · +58 212 605-4619</span>
     </div>
   </footer>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // Inicializar carrusel
-      class Carousel {
-        constructor(container) {
-          this.container = container;
-          this.items = Array.from(container.querySelectorAll('.carousel-item'));
-          this.currentIndex = 0;
-          this.interval = null;
-          this.duration = 5000;
-          
-          this.init();
-        }
-        
-        init() {
-          this.showItem(this.currentIndex);
-          this.startAutoRotation();
-          
-          this.container.addEventListener('mouseenter', () => this.stopAutoRotation());
-          this.container.addEventListener('mouseleave', () => this.startAutoRotation());
-        }
-        
-        showItem(index) {
-          this.items.forEach(item => item.classList.remove('active'));
-          this.items[index].classList.add('active');
-        }
-        
-        next() {
-          this.currentIndex = (this.currentIndex + 1) % this.items.length;
-          this.showItem(this.currentIndex);
-        }
-        
-        startAutoRotation() {
-          this.interval = setInterval(() => this.next(), this.duration);
-        }
-        
-        stopAutoRotation() {
-          clearInterval(this.interval);
-        }
-      }
-      
-      new Carousel(document.querySelector('.carousel'));
-      
-      // Configurar parámetros de la disciplina
-      const params = new URLSearchParams(window.location.search);
-      const disciplinaId = params.get('disciplinaId');
-      const disciplinaNombre = params.get('disciplinaNombre');
-      
-      if (disciplinaNombre) {
-        document.getElementById('nombreDisciplina').textContent = `Acceso a ${disciplinaNombre}`;
-      }
-      
-      // Configurar botón de acceso
-      const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec';
-      const campoClave = document.getElementById('claveDisciplina');
-      const btnAcceder = document.getElementById('btnAcceder');
+  <div class="toast-zona" id="toast-zona" aria-live="polite"></div>
 
-      if (!disciplinaId) {
-        document.getElementById('nombreDisciplina').textContent = 'Disciplina no especificada';
-      }
+  <script src="app.js"></script>
+  <script>
+    (async function () {
+      const API = 'https://script.google.com/macros/s/AKfycbzuYb3C1knQ5JArYTJM9nLLd9C8_YSHdr6AQssSxN97siEx3UAWdYIE3YMJkN7HtfS6fw/exec';
+
+      const parametros = new URLSearchParams(location.search);
+      const disciplinaId = parametros.get('disciplinaId');
+      const disciplinaNombre = parametros.get('disciplinaNombre') || 'Disciplina';
+
+      const titulo = document.getElementById('nombre-disciplina');
+      if (titulo) titulo.textContent = disciplinaNombre + ' · introduce la clave para entrar.';
+
+      const boton = document.getElementById('btn-acceder');
+      const campo = document.getElementById('clave');
 
       async function entrar() {
-        const clave = campoClave.value.trim();
-
-        if (!clave) {
-          alert('Por favor ingrese la clave de acceso');
-          campoClave.focus();
-          return;
-        }
+        const clave = campo.value.trim();
 
         if (!disciplinaId) {
-          alert('No se especificó la disciplina. Vuelve al inicio y selecciona una.');
+          mostrarToast('No se indicó la disciplina. Vuelve al inicio.', 'error');
           return;
         }
 
-        btnAcceder.disabled = true;
-        const textoOriginal = btnAcceder.innerHTML;
-        btnAcceder.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Verificando...';
+        if (!clave) {
+          mostrarToast('Escribe la clave de la disciplina.', 'error');
+          campo.focus();
+          return;
+        }
+
+        boton.disabled = true;
+        boton.textContent = 'Verificando…';
 
         try {
-          const url = new URL(WEB_APP_URL);
+          const url = new URL(API);
           url.searchParams.append('tipo', 'verificarAccesoDisciplina');
           url.searchParams.append('disciplinaId', disciplinaId);
           url.searchParams.append('clave', clave);
 
-          const respuesta = await fetch(url);
-          const data = await respuesta.json();
+          const datos = await (await fetch(url)).json();
 
-          if (data.status === 'ok' && data.token) {
-            const nombre = data.disciplina || disciplinaNombre || 'Disciplina';
-
-            sessionStorage.setItem('disciplina_' + disciplinaId + '_token', data.token);
-            sessionStorage.setItem('disciplina_' + disciplinaId + '_nombre', nombre);
-
-            window.location.href = 'atletas.html?disciplinaId=' + encodeURIComponent(disciplinaId) +
-              '&disciplinaNombre=' + encodeURIComponent(nombre);
+          if (datos.status !== 'ok' || !datos.token) {
+            mostrarToast(datos.message || 'Clave incorrecta', 'error');
+            campo.select();
             return;
           }
 
-          alert(data.message || 'Clave incorrecta');
-          campoClave.value = '';
-          campoClave.focus();
+          sessionStorage.setItem('disciplina_' + disciplinaId + '_token', datos.token);
+          sessionStorage.setItem('disciplina_' + disciplinaId + '_nombre', disciplinaNombre);
+
+          mostrarToast('Acceso concedido', 'exito');
+
+          setTimeout(function () {
+            window.location.href = 'atletas.html?disciplinaId=' + encodeURIComponent(disciplinaId) +
+              '&disciplinaNombre=' + encodeURIComponent(disciplinaNombre);
+          }, 500);
         } catch (error) {
-          console.error('Error:', error);
-          alert('Error al verificar la clave. Revisa tu conexión.');
+          mostrarToast('Error de conexión. Inténtalo de nuevo.', 'error');
         } finally {
-          btnAcceder.disabled = false;
-          btnAcceder.innerHTML = textoOriginal;
+          boton.disabled = false;
+          boton.textContent = 'Entrar';
         }
       }
 
-      btnAcceder.addEventListener('click', entrar);
-      campoClave.addEventListener('keydown', function (evento) {
-        if (evento.key === 'Enter') entrar();
-      });
-    });
+      boton.addEventListener('click', entrar);
+      campo.addEventListener('keydown', function (evento) { if (evento.key === 'Enter') entrar(); });
+    })();
   </script>
 </body>
 </html>

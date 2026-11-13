@@ -145,6 +145,12 @@ function doGet(e) {
       case 'getAtletas':
         return responderJSON_(getAtletas(p.disciplinaId, p.token, p.adminKey));
 
+      case 'buscarAtleta':
+        return responderJSON_(buscarAtleta(p.q));
+
+      case 'getAtleta':
+        return responderJSON_(getAtleta(p.id));
+
       case 'verificarAccesoDisciplina':
         return responderJSON_(verificarAccesoDisciplina(p.disciplinaId, p.clave));
 
@@ -223,10 +229,12 @@ function doPost(e) {
         respuesta = eliminarDisciplina(datos.id);
         break;
       case 'nuevo-atleta':
-        respuesta = agregarAtleta(datos.nombre, datos.disciplinaId, datos.facultadId, datos.escuelaId);
+        respuesta = agregarAtleta(datos.nombre, datos.disciplinaId, datos.facultadId, datos.escuelaId,
+          datos.cedula, datos.anioIngreso, datos.carrera);
         break;
       case 'editar-atleta':
-        respuesta = editarAtleta(datos.id, datos.nombre, datos.disciplinaId, datos.facultadId, datos.escuelaId);
+        respuesta = editarAtleta(datos.id, datos.nombre, datos.disciplinaId, datos.facultadId, datos.escuelaId,
+          datos.cedula, datos.anioIngreso, datos.carrera);
         break;
       case 'eliminar-atleta':
         respuesta = eliminarAtleta(datos.id);
@@ -488,12 +496,89 @@ function getAtletas(disciplinaId, token, adminKey) {
         disciplinaId: r[2],
         facultadId: r[3],
         escuelaId: r[4],
+        cedula: String(r[5] || '').replace(/\D/g, ''),
+        anioIngreso: r[6] || '',
+        carrera: normalizar_(r[7]),
         respondido: !!fechaEvaluacion,
         fechaEvaluacion: fechaEvaluacion ? formatearFecha_(fechaEvaluacion) : null
       };
     });
 
   return { status: 'ok', atletas: lista };
+}
+
+/* =====================================================================
+ * Consulta pública: búsqueda y ficha
+ * ===================================================================== */
+
+function mapaNombres_(hoja) {
+  var mapa = {};
+  filas_(hoja).forEach(function (r) {
+    if (r[0] !== '' && r[0] !== null && r[0] !== undefined) {
+      mapa[String(r[0])] = normalizar_(r[1]);
+    }
+  });
+  return mapa;
+}
+
+function datosFicha_(r, disciplinas, facultades) {
+  return {
+    id: r[0],
+    nombre: normalizar_(r[1]),
+    disciplina: disciplinas[String(r[2])] || '',
+    facultad: facultades[String(r[3])] || '',
+    cedula: String(r[5] || '').replace(/\D/g, ''),
+    anioIngreso: r[6] || '',
+    carrera: normalizar_(r[7])
+  };
+}
+
+/**
+ * Búsqueda pública por nombre o cédula. Devuelve como máximo 10 coincidencias.
+ */
+function buscarAtleta(consulta) {
+  var q = normalizar_(consulta);
+  if (!q || q.length < 3) return error_('Escribe al menos 3 letras o la cédula');
+
+  var soloDigitos = q.replace(/\D/g, '');
+  var disciplinas = mapaNombres_(HOJAS.DISCIPLINAS);
+  var facultades = mapaNombres_(HOJAS.FACULTADES);
+
+  var encontrados = [];
+  var filas = filas_(HOJAS.ATLETAS);
+
+  for (var i = 0; i < filas.length && encontrados.length < 10; i++) {
+    var r = filas[i];
+    var cedula = String(r[5] || '').replace(/\D/g, '');
+    var nombre = normalizar_(r[1]);
+
+    var coincide = soloDigitos
+      ? cedula.indexOf(soloDigitos) !== -1
+      : nombre.indexOf(q) !== -1;
+
+    if (coincide) encontrados.push(datosFicha_(r, disciplinas, facultades));
+  }
+
+  return { status: 'ok', atletas: encontrados };
+}
+
+/**
+ * Ficha completa de un atleta (solo lectura).
+ */
+function getAtleta(id) {
+  if (!id) return error_('Falta el identificador del atleta');
+
+  var disciplinas = mapaNombres_(HOJAS.DISCIPLINAS);
+  var facultades = mapaNombres_(HOJAS.FACULTADES);
+  var filas = filas_(HOJAS.ATLETAS);
+
+  for (var i = 0; i < filas.length; i++) {
+    if (String(filas[i][0]) === String(id)) {
+      return { status: 'ok', atleta: datosFicha_(filas[i], disciplinas, facultades) };
+    }
+  }
+
+  return error_('Atleta no encontrado');
 }
 
 function formatearFecha_(valor) {
@@ -651,7 +736,7 @@ function actualizarIconoDisciplina(disciplinaId, icono) {
  * CRUD: atletas
  * ===================================================================== */
 
-function agregarAtleta(nombre, disciplinaId, facultadId, escuelaId) {
+function agregarAtleta(nombre, disciplinaId, facultadId, escuelaId, cedula, anioIngreso, carrera) {
   var limpio = normalizar_(nombre);
   if (!limpio || !disciplinaId || !facultadId || !escuelaId) return error_('Faltan datos');
 
@@ -660,11 +745,21 @@ function agregarAtleta(nombre, disciplinaId, facultadId, escuelaId) {
   var ultimoId = filas.length ? Math.max.apply(null, filas.map(function (r) { return Number(r[0]) || 0; })) : 0;
   var nuevoId = ultimoId + 1;
 
-  hoja.appendRow([nuevoId, limpio, disciplinaId, facultadId, escuelaId]);
+  hoja.appendRow([
+    nuevoId,
+    limpio,
+    disciplinaId,
+    facultadId,
+    escuelaId,
+    String(cedula || '').replace(/\D/g, ''),
+    anioIngreso || '',
+    normalizar_(carrera)
+  ]);
+
   return { status: 'ok', id: nuevoId };
 }
 
-function editarAtleta(id, nombre, disciplinaId, facultadId, escuelaId) {
+function editarAtleta(id, nombre, disciplinaId, facultadId, escuelaId, cedula, anioIngreso, carrera) {
   var limpio = normalizar_(nombre);
   if (!id || !limpio || !disciplinaId || !facultadId || !escuelaId) return error_('Faltan datos');
 
@@ -673,6 +768,18 @@ function editarAtleta(id, nombre, disciplinaId, facultadId, escuelaId) {
   for (var i = 1; i < filas.length; i++) {
     if (String(filas[i][0]) === String(id)) {
       hoja.getRange(i + 1, 2, 1, 4).setValues([[limpio, disciplinaId, facultadId, escuelaId]]);
+
+      // Los datos personales solo se sobrescriben si llegan
+      if (cedula !== undefined) {
+        hoja.getRange(i + 1, 6).setValue(String(cedula || '').replace(/\D/g, ''));
+      }
+      if (anioIngreso !== undefined) {
+        hoja.getRange(i + 1, 7).setValue(anioIngreso || '');
+      }
+      if (carrera !== undefined) {
+        hoja.getRange(i + 1, 8).setValue(normalizar_(carrera));
+      }
+
       return { status: 'ok' };
     }
   }

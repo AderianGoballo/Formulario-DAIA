@@ -1,0 +1,259 @@
+/* =====================================================================
+   Añadidos v4: ficha en malla, avisos flotantes y ventana de clave
+   ===================================================================== */
+
+/* ---------- Avisos flotantes ---------- */
+
+.toast-zona {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(380px, calc(100vw - 40px));
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--superficie-solida);
+  border: 1px solid var(--borde-fuerte);
+  border-left: 4px solid var(--cian);
+  color: var(--texto);
+  font-size: 15.5px;
+  font-weight: 600;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  animation: entrarAviso 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.toast.saliendo { animation: salirAviso 0.28s ease forwards; }
+
+.toast.exito { border-left-color: var(--lima); }
+.toast.aviso { border-left-color: var(--ambar); }
+.toast.error { border-left-color: var(--rojo); }
+
+.toast .punto-aviso {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cian);
+  box-shadow: 0 0 12px currentColor;
+  flex-shrink: 0;
+}
+
+.toast.exito .punto-aviso { background: var(--lima); }
+.toast.aviso .punto-aviso { background: var(--ambar); }
+.toast.error .punto-aviso { background: var(--rojo); }
+
+@keyframes entrarAviso {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes salirAviso {
+  to { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+
+/* ---------- Ventana de clave ---------- */
+
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: none;
+  place-items: center;
+  background: rgba(4, 4, 10, 0.66);
+  backdrop-filter: blur(8px);
+  padding: 20px;
+}
+
+.modal-fondo.abierto { display: grid; }
+
+.modal {
+  width: min(430px, 100%);
+  background: var(--superficie-solida);
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  animation: entrarAviso 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modal h2 {
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+}
+
+.modal .modal-sub {
+  margin: 0 0 20px;
+  color: var(--texto-suave);
+  font-size: 15.5px;
+}
+
+.modal .modal-acciones {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.modal .modal-acciones .boton { flex: 1; }
+
+.modal .campo-texto { margin-bottom: 0; }
+
+/* ---------- Ficha en malla ---------- */
+
+.perfil {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.perfil-hero {
+  text-align: center;
+  padding: 8px 10px 4px;
+}
+
+.avatar-grande {
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.3rem;
+  font-weight: 800;
+  color: #07070E;
+  background: linear-gradient(135deg, var(--cian), var(--violeta));
+  box-shadow: 0 0 0 6px rgba(34, 211, 238, 0.12), 0 0 46px rgba(34, 211, 238, 0.35);
+}
+
+.perfil-nombre {
+  margin: 0 0 10px;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.perfil-pastilla {
+  display: inline-block;
+  padding: 5px 15px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--violeta);
+  border: 1px solid var(--violeta);
+  background: rgba(167, 139, 250, 0.10);
+}
+
+.nota-lectura {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+  margin: 16px 0 0;
+  font-size: 14.5px;
+  color: var(--texto-suave);
+}
+
+.nota-lectura::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cian);
+  box-shadow: 0 0 10px var(--cian);
+}
+
+.mosaico {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.celda {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  border-radius: 18px;
+  background: var(--superficie);
+  border: 1px solid color-mix(in srgb, var(--tinte) 32%, var(--borde));
+  overflow: hidden;
+  transition: transform 0.28s ease, border-color 0.28s ease, box-shadow 0.28s ease;
+}
+
+.celda::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(220px 90px at 50% -10%, var(--tinte-suave), transparent 70%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.celda:hover {
+  transform: translateY(-4px);
+  border-color: var(--tinte);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.celda .rotulo {
+  position: relative;
+  z-index: 1;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+.celda .valor {
+  position: relative;
+  z-index: 1;
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.celda.destacada .valor { font-size: 1.25rem; }
+
+.celda.n1 { --tinte: #22D3EE; --tinte-suave: rgba(34, 211, 238, 0.14); }
+.celda.n2 { --tinte: #A78BFA; --tinte-suave: rgba(167, 139, 250, 0.14); }
+.celda.n3 { --tinte: #F472B6; --tinte-suave: rgba(244, 114, 182, 0.14); }
+.celda.n4 { --tinte: #A3E635; --tinte-suave: rgba(163, 230, 53, 0.14); }
+.celda.n5 { --tinte: #FBBF24; --tinte-suave: rgba(251, 191, 36, 0.14); }
+.celda.n6 { --tinte: #60A5FA; --tinte-suave: rgba(96, 165, 250, 0.14); }
+
+[data-tema="claro"] .celda.n1 { --tinte: #0891B2; }
+[data-tema="claro"] .celda.n2 { --tinte: #7C3AED; }
+[data-tema="claro"] .celda.n3 { --tinte: #DB2777; }
+[data-tema="claro"] .celda.n4 { --tinte: #4D7C0F; }
+[data-tema="claro"] .celda.n5 { --tinte: #B45309; }
+[data-tema="claro"] .celda.n6 { --tinte: #2563EB; }
+
+.perfil-pie {
+  display: flex;
+  justify-content: center;
+  margin-top: 26px;
+}
+
+@media (max-width: 720px) {
+  .mosaico { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .avatar-grande { width: 108px; height: 108px; font-size: 1.9rem; }
+  .toast-zona { left: 14px; right: 14px; bottom: 14px; max-width: none; }
+  .modal { padding: 22px; }
+}
