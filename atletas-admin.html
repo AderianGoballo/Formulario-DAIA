@@ -96,10 +96,10 @@
         <table class="tabla">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Cédula</th>
-              <th>Disciplina</th>
+              <th data-orden="id">ID</th>
+              <th data-orden="nombre">Nombre</th>
+              <th data-orden="cedula">Cédula</th>
+              <th data-orden="disciplina">Disciplina</th>
               <th>Facultad</th>
               <th>Escuela</th>
               <th>Acciones</th>
@@ -107,6 +107,12 @@
           </thead>
           <tbody id="tabla-atletas-body"></tbody>
         </table>
+      </div>
+
+      <div class="paginacion">
+        <button class="boton secundario" id="pagina-anterior" type="button">← Anterior</button>
+        <span class="info" id="pagina-info">Página 1</span>
+        <button class="boton secundario" id="pagina-siguiente" type="button">Siguiente →</button>
       </div>
 
     </div>

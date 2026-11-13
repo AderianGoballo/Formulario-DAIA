@@ -178,3 +178,29 @@ table.tabla select {
 table.tabla input[type="password"] { width: 130px; }
 table.tabla select { width: 100%; max-width: 220px; }
 table.tabla select option { background: var(--superficie-solida); }
+
+/* ---------- Cabeceras ordenables y paginación ---------- */
+
+th[data-orden] {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+th[data-orden]:hover { color: var(--cian); }
+th[data-orden].activa { color: var(--cian); }
+th[data-orden].activa[data-dir="1"]::after { content: " ▲"; font-size: 9px; }
+th[data-orden].activa[data-dir="-1"]::after { content: " ▼"; font-size: 9px; }
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.paginacion .boton { height: 44px; padding: 0 18px; font-size: 15px; }
+.paginacion .info { font-size: 15px; color: var(--texto-suave); }
+.paginacion .boton:disabled { opacity: 0.45; cursor: not-allowed; }

@@ -290,8 +290,8 @@ async function agregarAtleta() {
         escuelaId: escuelaId
       };
       atletas.push(nuevoAtleta);
-      actualizarContador();
-      agregarFilaAtleta(nuevoAtleta);
+      vista.pagina = 1;
+      renderizarTabla();
       
       mostrarMensaje('Atleta agregado correctamente');
       input.focus();
@@ -456,8 +456,7 @@ async function eliminarAtleta() {
       if (res.status === 'ok') {
         // Eliminar localmente
         atletas = atletas.filter(a => a.id != atletaId);
-        actualizarContador();
-        document.querySelector(`tr:has(button[data-id="${atletaId}"])`)?.remove();
+        renderizarTabla();
         mostrarMensaje('Atleta eliminado correctamente');
       } else {
         throw new Error(res.message || 'Error al eliminar');
@@ -501,3 +500,122 @@ async function eliminarAtleta() {
     mostrarMensaje('Error: ' + error.message, 'error');
   }
 }
+/* ---------- Orden, filtro y paginación de la tabla ---------- */
+
+let vista = { texto: '', campo: 'id', dir: 1, pagina: 1, tamano: 25 };
+
+function nombreDisciplina(id) {
+  const d = disciplinas.find(function (x) { return String(x.id) === String(id); });
+  return d ? d.nombre : '';
+}
+
+function listaVisible() {
+  const texto = clave(vista.texto);
+  const digitos = String(vista.texto || '').replace(/\D/g, '');
+
+  const lista = atletas.filter(function (a) {
+    if (!texto) return true;
+    const porNombre = clave(a.nombre).indexOf(texto) !== -1;
+    const porCedula = digitos && String(a.cedula || '').indexOf(digitos) !== -1;
+    return porNombre || porCedula;
+  });
+
+  const campo = vista.campo;
+  const dir = vista.dir;
+
+  lista.sort(function (a, b) {
+    let x, y;
+
+    if (campo === 'nombre') { x = clave(a.nombre); y = clave(b.nombre); }
+    else if (campo === 'cedula') { x = String(a.cedula || '').padStart(10, '0'); y = String(b.cedula || '').padStart(10, '0'); }
+    else if (campo === 'disciplina') { x = clave(nombreDisciplina(a.disciplinaId)); y = clave(nombreDisciplina(b.disciplinaId)); }
+    else { x = Number(a.id) || 0; y = Number(b.id) || 0; }
+
+    if (x < y) return -1 * dir;
+    if (x > y) return 1 * dir;
+    return 0;
+  });
+
+  return lista;
+}
+
+function renderizarTabla() {
+  const tbody = document.getElementById('tabla-atletas-body');
+  if (!tbody) return;
+
+  const lista = listaVisible();
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / vista.tamano));
+
+  if (vista.pagina > totalPaginas) vista.pagina = totalPaginas;
+  if (vista.pagina < 1) vista.pagina = 1;
+
+  const inicio = (vista.pagina - 1) * vista.tamano;
+  const pagina = lista.slice(inicio, inicio + vista.tamano);
+
+  tbody.innerHTML = '';
+
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="vacio">No hay atletas que coincidan con la búsqueda.</td></tr>';
+  } else {
+    pagina.forEach(agregarFilaAtleta);
+  }
+
+  const contador = document.getElementById('contador-atletas');
+  if (contador) {
+    contador.textContent = vista.texto
+      ? lista.length + ' de ' + atletas.length + ' registros'
+      : atletas.length + ' registros';
+  }
+
+  const info = document.getElementById('pagina-info');
+  if (info) info.textContent = 'Página ' + vista.pagina + ' de ' + totalPaginas;
+
+  const prev = document.getElementById('pagina-anterior');
+  const siguiente = document.getElementById('pagina-siguiente');
+  if (prev) prev.disabled = vista.pagina <= 1;
+  if (siguiente) siguiente.disabled = vista.pagina >= totalPaginas;
+
+  document.querySelectorAll('th[data-orden]').forEach(function (th) {
+    const activa = th.getAttribute('data-orden') === vista.campo;
+    th.classList.toggle('activa', activa);
+    th.setAttribute('data-dir', activa ? String(vista.dir) : '');
+  });
+}
+
+function cargarTablaAtletas() {
+  vista.pagina = 1;
+  renderizarTabla();
+}
+
+function filtrarAtletas() {
+  const campo = document.getElementById('filtro-atletas');
+  vista.texto = campo ? campo.value : '';
+  vista.pagina = 1;
+  renderizarTabla();
+}
+
+function actualizarFilaAtleta() {
+  renderizarTabla();
+}
+
+function cambiarOrden(campo) {
+  if (vista.campo === campo) vista.dir = -vista.dir;
+  else { vista.campo = campo; vista.dir = 1; }
+
+  vista.pagina = 1;
+  renderizarTabla();
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('th[data-orden]').forEach(function (th) {
+    th.addEventListener('click', function () {
+      cambiarOrden(th.getAttribute('data-orden'));
+    });
+  });
+
+  const prev = document.getElementById('pagina-anterior');
+  const siguiente = document.getElementById('pagina-siguiente');
+
+  if (prev) prev.addEventListener('click', function () { vista.pagina--; renderizarTabla(); });
+  if (siguiente) siguiente.addEventListener('click', function () { vista.pagina++; renderizarTabla(); });
+});
