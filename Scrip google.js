@@ -273,6 +273,9 @@ function doPost(e) {
       case 'actualizarIconoDisciplina':
         respuesta = actualizarIconoDisciplina(datos.id, datos.icono);
         break;
+      case 'limpiarDuplicados':
+        respuesta = limpiarDuplicados(datos.simular !== 'false');
+        break;
       default:
         respuesta = error_('Operación no soportada: ' + (tipo || 'ninguna'));
     }
@@ -642,6 +645,108 @@ function guardarRespuesta(d) {
   } catch (err) {
     return { result: 'error', message: 'Error guardando la respuesta: ' + err.message };
   }
+}
+
+/* =====================================================================
+ * Mantenimiento: fusión de atletas duplicados
+ * ===================================================================== */
+
+/**
+ * Une los atletas repetidos: conserva la fila con cédula y elimina la que
+ * no la tiene, trasladando antes sus evaluaciones.
+ */
+function limpiarDuplicados(simular) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hojaAtletas = ss.getSheetByName(HOJAS.ATLETAS);
+  if (!hojaAtletas) throw new Error('No existe la hoja Atletas');
+
+  var hojaRespuestas = ss.getSheetByName(HOJAS.RESPUESTAS);
+  var atletas = hojaAtletas.getDataRange().getValues();
+
+  var grupos = {};
+  for (var i = 1; i < atletas.length; i++) {
+    var nombre = clave_(atletas[i][1]);
+    if (!nombre) continue;
+
+    if (!grupos[nombre]) grupos[nombre] = [];
+    grupos[nombre].push({
+      fila: i + 1,
+      id: atletas[i][0],
+      disciplinaId: atletas[i][2],
+      facultadId: atletas[i][3],
+      escuelaId: atletas[i][4],
+      cedula: String(atletas[i][5] || '').replace(/\D/g, '')
+    });
+  }
+
+  var fusiones = [];
+  Object.keys(grupos).forEach(function (nombre) {
+    var lista = grupos[nombre];
+    if (lista.length !== 2) return;
+
+    var conCedula = lista.filter(function (a) { return a.cedula; });
+    var sinCedula = lista.filter(function (a) { return !a.cedula; });
+
+    if (conCedula.length === 1 && sinCedula.length === 1) {
+      fusiones.push({ nombre: nombre, conservar: conCedula[0], borrar: sinCedula[0] });
+    }
+  });
+
+  var respuestas = hojaRespuestas ? hojaRespuestas.getDataRange().getValues() : [];
+  var movimientos = [];
+
+  fusiones.forEach(function (f) {
+    for (var j = 1; j < respuestas.length; j++) {
+      if (String(respuestas[j][13]) === String(f.borrar.id)) {
+        movimientos.push({ fila: j + 1, destino: f.conservar.id });
+      }
+    }
+  });
+
+  var detalle = fusiones.map(function (f) {
+    return { nombre: f.nombre, conservarId: f.conservar.id, borrarId: f.borrar.id };
+  });
+
+  if (simular) {
+    return {
+      status: 'ok',
+      simulacion: true,
+      fusiones: fusiones.length,
+      respuestasAMover: movimientos.length,
+      detalle: detalle
+    };
+  }
+
+  // Completar datos que falten en la fila que se conserva
+  fusiones.forEach(function (f) {
+    if (!f.conservar.disciplinaId && f.borrar.disciplinaId) {
+      hojaAtletas.getRange(f.conservar.fila, 3).setValue(f.borrar.disciplinaId);
+    }
+    if (!f.conservar.facultadId && f.borrar.facultadId) {
+      hojaAtletas.getRange(f.conservar.fila, 4).setValue(f.borrar.facultadId);
+    }
+    if (!f.conservar.escuelaId && f.borrar.escuelaId) {
+      hojaAtletas.getRange(f.conservar.fila, 5).setValue(f.borrar.escuelaId);
+    }
+  });
+
+  movimientos.forEach(function (m) {
+    hojaRespuestas.getRange(m.fila, 14).setValue(m.destino);
+  });
+
+  var filas = fusiones.map(function (f) { return f.borrar.fila; })
+    .sort(function (a, b) { return b - a; });
+
+  filas.forEach(function (fila) { hojaAtletas.deleteRow(fila); });
+
+  invalidarCache_();
+
+  return {
+    status: 'ok',
+    eliminados: filas.length,
+    respuestasMovidas: movimientos.length,
+    detalle: detalle
+  };
 }
 
 /* =====================================================================
