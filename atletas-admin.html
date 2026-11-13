@@ -47,7 +47,10 @@
 
       <div class="barra-panel">
         <h1>Atletas</h1>
-        <span class="contador" id="contador-atletas">Cargando…</span>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <input class="campo" id="filtro-atletas" type="search" placeholder="Buscar por nombre o cédula" style="height: 44px; min-width: 240px; padding-left: 14px;">
+          <span class="contador" id="contador-atletas">Cargando…</span>
+        </div>
       </div>
 
       <section class="alta">

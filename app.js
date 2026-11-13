@@ -156,7 +156,7 @@ async function cargarDisciplinas() {
       tarjeta.innerHTML =
         '<span class="icono">' + ICONO + '</span>' +
         '<strong>' + escapar(d.nombre) + '</strong>' +
-        '<span class="cantidad">' + (d.requiereClave ? 'Requiere clave' : 'Acceso directo') + '</span>' +
+        '<span class="cantidad">' + (d.atletas || 0) + ' atleta' + ((d.atletas === 1) ? '' : 's') + '</span>' +
         '<span class="ver">Ver atletas →</span>';
 
       contenedor.appendChild(tarjeta);
@@ -338,7 +338,7 @@ async function cargarPerfil() {
         celda('n4', '', 'Año de ingreso', a.anioIngreso || 'Sin dato') +
         celda('n3', '', 'Carrera', a.carrera || 'Sin dato') +
         celda('n5', '', 'Facultad', a.facultad || 'Sin dato') +
-        celda('n6', '', 'Estado', 'Registrado') +
+        celda('n6', '', 'Última evaluación', a.ultimaEvaluacion || 'Sin evaluar') +
       '</div>' +
       '<div class="perfil-pie"><a class="boton secundario" href="index.html">Volver a la consulta</a></div>';
   } catch (error) {

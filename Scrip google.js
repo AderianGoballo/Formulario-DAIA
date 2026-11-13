@@ -369,12 +369,20 @@ function getDisciplinas() {
   if (cache) return cache;
 
   var iconos = mapaIconos_();
+
+  var conteo = {};
+  filas_(HOJAS.ATLETAS).forEach(function (r) {
+    var d = String(r[2] || '').trim();
+    if (d) conteo[d] = (conteo[d] || 0) + 1;
+  });
+
   var disciplinas = filas_(HOJAS.DISCIPLINAS).map(function (r) {
     return {
       id: r[0],
       nombre: normalizar_(r[1]),
       icono: iconos[String(r[0])] || 'fa-trophy',
-      requiereClave: normalizar_(r[2]) !== ''
+      requiereClave: normalizar_(r[2]) !== '',
+      atletas: conteo[String(r[0])] || 0
     };
   });
 
@@ -593,11 +601,36 @@ function getAtleta(id) {
 
   for (var i = 0; i < filas.length; i++) {
     if (String(filas[i][0]) === String(id)) {
-      return { status: 'ok', atleta: datosFicha_(filas[i], disciplinas, facultades) };
+      var ficha = datosFicha_(filas[i], disciplinas, facultades);
+      ficha.ultimaEvaluacion = ultimaEvaluacion_(ficha.id, ficha.nombre);
+      return { status: 'ok', atleta: ficha };
     }
   }
 
   return error_('Atleta no encontrado');
+}
+
+/**
+ * Fecha de la última evaluación del atleta (por ID y, si falta, por nombre).
+ */
+function ultimaEvaluacion_(atletaId, nombre) {
+  var filas = filas_(HOJAS.RESPUESTAS);
+  var ultima = null;
+  var nombreClave = clave_(nombre);
+
+  for (var i = 0; i < filas.length; i++) {
+    var r = filas[i];
+    var id = String(r[13] || '').trim();
+
+    var coincide = id
+      ? id === String(atletaId)
+      : clave_(r[1]) === nombreClave;
+
+    if (!coincide) continue;
+    if (!ultima || r[0] > ultima) ultima = r[0];
+  }
+
+  return ultima ? formatearFecha_(ultima) : '';
 }
 
 function formatearFecha_(valor) {

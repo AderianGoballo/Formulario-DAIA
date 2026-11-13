@@ -12,7 +12,44 @@ document.addEventListener('DOMContentLoaded', async function() {
   ]);
   
   document.getElementById('btn-agregar-atleta').addEventListener('click', agregarAtleta);
+
+  const filtro = document.getElementById('filtro-atletas');
+  if (filtro) filtro.addEventListener('input', filtrarAtletas);
 });
+
+function clave(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+}
+
+function filtrarAtletas() {
+  const campo = document.getElementById('filtro-atletas');
+  const tbody = document.getElementById('tabla-atletas-body');
+  const contador = document.getElementById('contador-atletas');
+  if (!campo || !tbody) return;
+
+  const texto = clave(campo.value);
+  const digitos = campo.value.replace(/\D/g, '');
+
+  const lista = atletas.filter(function (a) {
+    const coincideNombre = clave(a.nombre).indexOf(texto) !== -1;
+    const coincideCedula = digitos && String(a.cedula || '').indexOf(digitos) !== -1;
+    return texto ? (coincideNombre || coincideCedula) : true;
+  });
+
+  tbody.innerHTML = '';
+  lista.forEach(agregarFilaAtleta);
+
+  if (contador) {
+    contador.textContent = texto
+      ? lista.length + ' de ' + atletas.length + ' registros'
+      : atletas.length + ' registros';
+  }
+}
 
 let disciplinas = [];
 let facultades = [];
@@ -324,6 +361,30 @@ async function editarAtleta() {
     confirmButtonText: 'Guardar cambios',
     cancelButtonText: 'Cancelar',
     focusConfirm: false,
+    didOpen: function () {
+      const selectFacultad = document.getElementById('e-facultad');
+      const selectEscuela = document.getElementById('e-escuela');
+      if (!selectFacultad || !selectEscuela) return;
+
+      selectFacultad.addEventListener('change', function () {
+        const elegida = selectFacultad.value;
+        const anterior = selectEscuela.value;
+
+        let html = '<option value="">Sin asignar</option>';
+
+        escuelas
+          .filter(function (e) { return !elegida || String(e.facultadId) === String(elegida); })
+          .forEach(function (e) {
+            html += '<option value="' + e.id + '">' + escapeHtml(e.nombre) + '</option>';
+          });
+
+        selectEscuela.innerHTML = html;
+
+        if (Array.prototype.some.call(selectEscuela.options, function (o) { return o.value === anterior; })) {
+          selectEscuela.value = anterior;
+        }
+      });
+    },
     preConfirm: function () {
       const nombre = document.getElementById('e-nombre').value.trim();
       if (!nombre) {
